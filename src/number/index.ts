@@ -1,0 +1,6 @@
+export { clamp } from './clamp'
+export { lerp } from './lerp'
+export { roundTo } from './roundTo'
+export { randomInt } from './randomInt'
+export { inRange } from './inRange'
+export { truncateTo } from './truncateTo'

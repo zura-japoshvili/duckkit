@@ -1,0 +1,8 @@
+src/
+tests/
+coverage/
+*.config.ts
+tsconfig.json
+.gitignore
+.github/
+*.map
