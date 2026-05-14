@@ -1,6 +1,6 @@
 {
   "name": "duckkit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript-first utility library.",
   "author": "Zura Japoshvili",
   "license": "MIT",
@@ -8,7 +8,14 @@
     "type": "git",
     "url": "https://github.com/zura-japoshvili/duckkit.git"
   },
-  "keywords": ["typescript", "utility", "groupBy", "pipe", "safe", "tree-shakeable"],
+  "keywords": [
+    "typescript",
+    "utility",
+    "groupBy",
+    "pipe",
+    "safe",
+    "tree-shakeable"
+  ],
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -55,7 +62,9 @@
       "require": "./dist/delay/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
