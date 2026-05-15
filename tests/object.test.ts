@@ -19,6 +19,12 @@ describe('isEqual', () => {
   it('dates not equal', () => expect(isEqual(new Date('2026-01-01'), new Date('2026-01-02'))).toBe(false))
   it('different types', () => expect(isEqual(1, '1')).toBe(false))
   it('extra keys make objects not equal', () => expect(isEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false))
+  it('empty objects are equal', () => expect(isEqual({}, {})).toBe(true))
+  it('empty arrays are equal', () => expect(isEqual([], [])).toBe(true))
+  it('array of objects — equal', () => expect(isEqual([{ a: 1 }, { b: 2 }], [{ a: 1 }, { b: 2 }])).toBe(true))
+  it('array of objects — not equal', () => expect(isEqual([{ a: 1 }], [{ a: 2 }])).toBe(false))
+  it('undefined equals undefined', () => expect(isEqual(undefined, undefined)).toBe(true))
+  it('object with undefined value equals same', () => expect(isEqual({ a: undefined }, { a: undefined })).toBe(true))
 })
 
 describe('deepClone', () => {
@@ -55,6 +61,28 @@ describe('deepClone', () => {
   it('handles undefined', () => expect(deepClone(undefined)).toBeUndefined())
   it('handles primitives', () => expect(deepClone(42)).toBe(42))
   it('handles strings', () => expect(deepClone('hello')).toBe('hello'))
+
+  it('clones array of objects — mutation does not affect original', () => {
+    const arr = [{ x: 1 }, { x: 2 }]
+    const clone = deepClone(arr)
+    clone[0]!.x = 99
+    expect(arr[0]!.x).toBe(1)
+  })
+
+  it('clones deeply nested structure', () => {
+    const obj = { a: { b: { c: { d: 42 } } } }
+    const clone = deepClone(obj)
+    clone.a.b.c.d = 0
+    expect(obj.a.b.c.d).toBe(42)
+  })
+
+  it('clones object containing a Date — mutation of date does not affect original', () => {
+    const obj = { createdAt: new Date('2026-01-01') }
+    const clone = deepClone(obj)
+    expect(clone.createdAt instanceof Date).toBe(true)
+    expect(clone.createdAt).not.toBe(obj.createdAt)
+    expect(clone.createdAt.getTime()).toBe(obj.createdAt.getTime())
+  })
 })
 
 describe('pick', () => {

@@ -202,4 +202,12 @@ describe('repeat', () => {
     await p
     expect(results).toEqual([0, 2, 4])
   })
+
+  it('negative times never calls fn', async () => {
+    const fn = vi.fn()
+    const p = repeat(-1, 100, fn)
+    await vi.advanceTimersByTimeAsync(0)
+    await p
+    expect(fn).not.toHaveBeenCalled()
+  })
 })
