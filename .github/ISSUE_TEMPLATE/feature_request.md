@@ -1,20 +1,27 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+about: Suggest a new utility function or improvement
+title: 'feat: '
+labels: enhancement
 assignees: ''
-
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**What utility are you missing?**
+Describe the function you wish existed.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**Example usage**
+```typescript
+// what you'd want to write
+import { myFunction } from 'duckkit'
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+myFunction(input)
+// expected output
+```
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+**Why does it belong in duckkit?**
+- Is it something you write from scratch in every project?
+- Does it have proper TypeScript types elsewhere?
+- Is it zero-dependency friendly?
+
+**Alternatives you've tried**
+What do you do today without this function?
