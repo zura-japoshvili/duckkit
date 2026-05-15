@@ -1,5 +1,137 @@
 import { describe, it, expect } from 'vitest'
 import { groupBy, flatGroupBy, chunk, unique, topBy, zip } from '../src/array/index'
+import { sortBy, minBy, maxBy, partition } from '../src/array/index'
+
+
+describe('sortBy', () => {
+  it('sorts by number ascending by default', () => {
+    const arr = [{ v: 3 }, { v: 1 }, { v: 2 }]
+    expect(sortBy(arr, x => x.v)).toEqual([{ v: 1 }, { v: 2 }, { v: 3 }])
+  })
+
+  it('sorts by number descending', () => {
+    const arr = [{ v: 3 }, { v: 1 }, { v: 2 }]
+    expect(sortBy(arr, x => x.v, 'desc')).toEqual([{ v: 3 }, { v: 2 }, { v: 1 }])
+  })
+
+  it('sorts by string ascending', () => {
+    const arr = [{ name: 'Zura' }, { name: 'Alice' }, { name: 'Mike' }]
+    expect(sortBy(arr, x => x.name)[0]?.name).toBe('Alice')
+  })
+
+  it('sorts by string descending', () => {
+    const arr = [{ name: 'Zura' }, { name: 'Alice' }, { name: 'Mike' }]
+    expect(sortBy(arr, x => x.name, 'desc')[0]?.name).toBe('Zura')
+  })
+
+  it('does not mutate original array', () => {
+    const arr = [{ v: 3 }, { v: 1 }, { v: 2 }]
+    const original = [...arr]
+    sortBy(arr, x => x.v)
+    expect(arr).toEqual(original)
+  })
+
+  it('handles empty array', () => {
+    expect(sortBy([], x => x)).toEqual([])
+  })
+
+  it('handles single item', () => {
+    expect(sortBy([{ v: 1 }], x => x.v)).toEqual([{ v: 1 }])
+  })
+})
+
+describe('minBy', () => {
+  it('returns item with lowest value', () => {
+    const arr = [{ v: 3 }, { v: 1 }, { v: 2 }]
+    expect(minBy(arr, x => x.v)).toEqual({ v: 1 })
+  })
+
+  it('returns undefined for empty array', () => {
+    expect(minBy([], x => x)).toBeUndefined()
+  })
+
+  it('handles single item', () => {
+    expect(minBy([{ v: 5 }], x => x.v)).toEqual({ v: 5 })
+  })
+
+  it('handles negative values', () => {
+    const arr = [{ v: -1 }, { v: -5 }, { v: -2 }]
+    expect(minBy(arr, x => x.v)).toEqual({ v: -5 })
+  })
+
+  it('returns first item on tie', () => {
+    const arr = [{ v: 1, name: 'a' }, { v: 1, name: 'b' }]
+    expect(minBy(arr, x => x.v)?.name).toBe('a')
+  })
+})
+
+describe('maxBy', () => {
+  it('returns item with highest value', () => {
+    const arr = [{ v: 3 }, { v: 1 }, { v: 2 }]
+    expect(maxBy(arr, x => x.v)).toEqual({ v: 3 })
+  })
+
+  it('returns undefined for empty array', () => {
+    expect(maxBy([], x => x)).toBeUndefined()
+  })
+
+  it('handles single item', () => {
+    expect(maxBy([{ v: 5 }], x => x.v)).toEqual({ v: 5 })
+  })
+
+  it('handles negative values', () => {
+    const arr = [{ v: -1 }, { v: -5 }, { v: -2 }]
+    expect(maxBy(arr, x => x.v)).toEqual({ v: -1 })
+  })
+
+  it('returns first item on tie', () => {
+    const arr = [{ v: 5, name: 'a' }, { v: 5, name: 'b' }]
+    expect(maxBy(arr, x => x.v)?.name).toBe('a')
+  })
+})
+
+describe('partition', () => {
+  it('splits into matches and non-matches', () => {
+    const [evens, odds] = partition([1, 2, 3, 4, 5], n => n % 2 === 0)
+    expect(evens).toEqual([2, 4])
+    expect(odds).toEqual([1, 3, 5])
+  })
+
+  it('all match — second array empty', () => {
+    const [matches, rest] = partition([2, 4, 6], n => n % 2 === 0)
+    expect(matches).toEqual([2, 4, 6])
+    expect(rest).toEqual([])
+  })
+
+  it('none match — first array empty', () => {
+    const [matches, rest] = partition([1, 3, 5], n => n % 2 === 0)
+    expect(matches).toEqual([])
+    expect(rest).toEqual([1, 3, 5])
+  })
+
+  it('handles empty array', () => {
+    const [a, b] = partition([], () => true)
+    expect(a).toEqual([])
+    expect(b).toEqual([])
+  })
+
+  it('works with objects', () => {
+    const users = [
+      { name: 'Zura', admin: true },
+      { name: 'Alice', admin: false },
+      { name: 'Giorgi', admin: true },
+    ]
+    const [admins, regular] = partition(users, x => x.admin)
+    expect(admins).toHaveLength(2)
+    expect(regular).toHaveLength(1)
+    expect(regular[0]?.name).toBe('Alice')
+  })
+
+  it('preserves order within each group', () => {
+    const [a] = partition([3, 1, 4, 1, 5], n => n > 2)
+    expect(a).toEqual([3, 4, 5])
+  })
+})
 
 describe('groupBy', () => {
   it('groups by string key', () => {

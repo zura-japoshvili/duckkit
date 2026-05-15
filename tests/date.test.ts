@@ -3,6 +3,8 @@ import {
   timeAgo, formatDate, daysBetween,
   isToday, isYesterday, isWeekend, isThisWeek, isThisYear
 } from '../src/date/index'
+import { addDays, subDays, isBefore, isAfter } from '../src/date/index'
+
 
 // Wednesday May 13 2026 12:00:00 — fixed point in time for all tests
 const FIXED_NOW = new Date(2026, 4, 13, 12, 0, 0)
@@ -14,6 +16,94 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+})
+
+describe('addDays', () => {
+  it('adds days correctly', () => {
+    const result = addDays(new Date(2026, 0, 1), 7)
+    expect(result.getDate()).toBe(8)
+    expect(result.getMonth()).toBe(0)
+  })
+
+  it('crosses month boundary', () => {
+    const result = addDays(new Date(2026, 0, 28), 7)
+    expect(result.getMonth()).toBe(1)
+    expect(result.getDate()).toBe(4)
+  })
+
+  it('crosses year boundary', () => {
+    const result = addDays(new Date(2025, 11, 28), 7)
+    expect(result.getFullYear()).toBe(2026)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 0, 1)
+    addDays(original, 7)
+    expect(original.getDate()).toBe(1)
+  })
+
+  it('adding 0 days returns same date', () => {
+    const date = new Date(2026, 0, 1)
+    expect(addDays(date, 0).getTime()).toBe(date.getTime())
+  })
+
+  it('negative days go backward', () => {
+    const result = addDays(new Date(2026, 0, 10), -5)
+    expect(result.getDate()).toBe(5)
+  })
+})
+
+describe('subDays', () => {
+  it('subtracts days correctly', () => {
+    const result = subDays(new Date(2026, 0, 10), 5)
+    expect(result.getDate()).toBe(5)
+  })
+
+  it('crosses month boundary', () => {
+    const result = subDays(new Date(2026, 1, 3), 7)
+    expect(result.getMonth()).toBe(0)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 0, 10)
+    subDays(original, 5)
+    expect(original.getDate()).toBe(10)
+  })
+
+  it('subtracting 0 returns same date', () => {
+    const date = new Date(2026, 0, 1)
+    expect(subDays(date, 0).getTime()).toBe(date.getTime())
+  })
+})
+
+describe('isBefore', () => {
+  it('returns true when a is before b', () => {
+    expect(isBefore(new Date(2026, 0, 1), new Date(2026, 11, 31))).toBe(true)
+  })
+
+  it('returns false when a is after b', () => {
+    expect(isBefore(new Date(2026, 11, 31), new Date(2026, 0, 1))).toBe(false)
+  })
+
+  it('returns false when dates are equal', () => {
+    const d = new Date(2026, 0, 1)
+    expect(isBefore(d, d)).toBe(false)
+  })
+})
+
+describe('isAfter', () => {
+  it('returns true when a is after b', () => {
+    expect(isAfter(new Date(2026, 11, 31), new Date(2026, 0, 1))).toBe(true)
+  })
+
+  it('returns false when a is before b', () => {
+    expect(isAfter(new Date(2026, 0, 1), new Date(2026, 11, 31))).toBe(false)
+  })
+
+  it('returns false when dates are equal', () => {
+    const d = new Date(2026, 0, 1)
+    expect(isAfter(d, d)).toBe(false)
+  })
 })
 
 describe('timeAgo', () => {

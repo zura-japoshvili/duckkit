@@ -1,5 +1,115 @@
 import { describe, it, expect, vi } from 'vitest'
 import { safe, safeAsync, pipe, memo, debounce } from '../src/async/index'
+import { throttle, retry, timeout, TimeoutError } from '../src/async/index'
+
+describe('throttle', () => {
+  it('calls fn immediately on first call', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled()
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('ignores calls within the interval', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled()
+    throttled()
+    throttled()
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('allows call after interval passes', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled()
+    vi.advanceTimersByTime(100)
+    throttled()
+    expect(fn).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('passes args correctly', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled('hello', 42)
+    expect(fn).toHaveBeenCalledWith('hello', 42)
+    vi.useRealTimers()
+  })
+})
+
+describe('retry', () => {
+  it('returns value on first success', async () => {
+    const fn = vi.fn().mockResolvedValue(42)
+    expect(await retry(fn, 3)).toBe(42)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries on failure and succeeds', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('ok')
+    expect(await retry(fn, 3)).toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('throws after all attempts fail', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('always fails'))
+    await expect(retry(fn, 3)).rejects.toThrow('always fails')
+    expect(fn).toHaveBeenCalledTimes(3)
+  })
+
+  it('defaults to 3 attempts', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('fail'))
+    await expect(retry(fn)).rejects.toThrow()
+    expect(fn).toHaveBeenCalledTimes(3)
+  })
+
+  it('wraps non-Error throws', async () => {
+    const fn = vi.fn().mockRejectedValue('string error')
+    await expect(retry(fn, 1)).rejects.toBeInstanceOf(Error)
+  })
+})
+
+describe('timeout', () => {
+  it('resolves if promise wins', async () => {
+    const result = await timeout(Promise.resolve(42), 1000)
+    expect(result).toBe(42)
+  })
+
+  it('rejects with TimeoutError if timer wins', async () => {
+    vi.useFakeTimers()
+    const p = new Promise(() => {})
+    const result = timeout(p, 1000)
+    vi.advanceTimersByTime(1000)
+    await expect(result).rejects.toBeInstanceOf(TimeoutError)
+    vi.useRealTimers()
+  })
+
+  it('uses custom error message', async () => {
+    vi.useFakeTimers()
+    const p = new Promise(() => {})
+    const result = timeout(p, 1000, 'too slow')
+    vi.advanceTimersByTime(1000)
+    await expect(result).rejects.toThrow('too slow')
+    vi.useRealTimers()
+  })
+
+  it('TimeoutError has correct name', async () => {
+    vi.useFakeTimers()
+    const p = new Promise(() => {})
+    const result = timeout(p, 1000)
+    vi.advanceTimersByTime(1000)
+    await expect(result).rejects.toMatchObject({ name: 'TimeoutError' })
+    vi.useRealTimers()
+  })
+})
 
 describe('safe', () => {
   it('returns ok result on success', () => {
