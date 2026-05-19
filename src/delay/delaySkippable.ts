@@ -35,7 +35,10 @@ export function delaySkippable(
       return
     }
 
-    const timer = setTimeout(resolve, ms)
+    const timer = setTimeout(() => {
+      clearInterval(poll)
+      resolve()
+    }, ms)
 
     const poll = setInterval(() => {
       if (condition()) {
@@ -44,10 +47,5 @@ export function delaySkippable(
         resolve()
       }
     }, pollInterval)
-
-    setTimeout(() => {
-      clearInterval(poll)
-      resolve()
-    }, ms)
   })
 }
