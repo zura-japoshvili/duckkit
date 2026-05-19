@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { groupBy, flatGroupBy, chunk, unique, topBy, zip } from '../src/array/index'
 import { sortBy, minBy, maxBy, partition } from '../src/array/index'
+import { compact, sum, sumBy, countBy, intersection, difference, shuffle, flatten, range, sample, keyBy, without, union } from '../src/array/index'
 
 
 describe('sortBy', () => {
@@ -320,5 +321,335 @@ describe('zip', () => {
 
   it('single element arrays', () => {
     expect(zip(['x'], [99])).toEqual([['x', 99]])
+  })
+})
+
+describe('compact', () => {
+  it('removes null and undefined', () => {
+    expect(compact([1, null, 2, undefined, 3])).toEqual([1, 2, 3])
+  })
+
+  it('removes false, 0, empty string', () => {
+    expect(compact([1, false, 2, 0, 3, ''])).toEqual([1, 2, 3])
+  })
+
+  it('returns same array when nothing to remove', () => {
+    expect(compact([1, 2, 3])).toEqual([1, 2, 3])
+  })
+
+  it('handles empty array', () => {
+    expect(compact([])).toEqual([])
+  })
+
+  it('all falsy returns empty array', () => {
+    expect(compact([null, undefined, false, 0, ''])).toEqual([])
+  })
+
+  it('preserves order', () => {
+    expect(compact([3, null, 1, undefined, 2])).toEqual([3, 1, 2])
+  })
+})
+
+describe('sum', () => {
+  it('sums numbers', () => {
+    expect(sum([1, 2, 3, 4, 5])).toBe(15)
+  })
+
+  it('returns 0 for empty array', () => {
+    expect(sum([])).toBe(0)
+  })
+
+  it('handles negative numbers', () => {
+    expect(sum([-1, -2, 3])).toBe(0)
+  })
+
+  it('handles single item', () => {
+    expect(sum([42])).toBe(42)
+  })
+
+  it('handles floats', () => {
+    expect(sum([0.1, 0.2])).toBeCloseTo(0.3)
+  })
+})
+
+describe('sumBy', () => {
+  it('sums by numeric field', () => {
+    const orders = [{ total: 10 }, { total: 20 }, { total: 30 }]
+    expect(sumBy(orders, x => x.total)).toBe(60)
+  })
+
+  it('returns 0 for empty array', () => {
+    expect(sumBy([], x => x)).toBe(0)
+  })
+
+  it('works with computed values', () => {
+    const cart = [{ price: 10, qty: 2 }, { price: 5, qty: 3 }]
+    expect(sumBy(cart, x => x.price * x.qty)).toBe(35)
+  })
+
+  it('handles negative values', () => {
+    const items = [{ v: 10 }, { v: -3 }]
+    expect(sumBy(items, x => x.v)).toBe(7)
+  })
+})
+
+describe('countBy', () => {
+  it('counts by string key', () => {
+    const users = [
+      { country: 'GE' },
+      { country: 'US' },
+      { country: 'GE' },
+      { country: 'GE' },
+    ]
+    expect(countBy(users, x => x.country)).toEqual({ GE: 3, US: 1 })
+  })
+
+  it('handles empty array', () => {
+    expect(countBy([], x => x)).toEqual({})
+  })
+
+  it('all items same key', () => {
+    expect(countBy([1, 2, 3], () => 'all')).toEqual({ all: 3 })
+  })
+
+  it('each item unique key', () => {
+    const result = countBy(['a', 'b', 'c'], x => x)
+    expect(result).toEqual({ a: 1, b: 1, c: 1 })
+  })
+})
+
+describe('intersection', () => {
+  it('returns common primitives', () => {
+    expect(intersection([1, 2, 3, 4], [2, 4, 6])).toEqual([2, 4])
+  })
+
+  it('returns empty when no common items', () => {
+    expect(intersection([1, 2, 3], [4, 5, 6])).toEqual([])
+  })
+
+  it('handles empty first array', () => {
+    expect(intersection([], [1, 2, 3])).toEqual([])
+  })
+
+  it('handles empty second array', () => {
+    expect(intersection([1, 2, 3], [])).toEqual([])
+  })
+
+  it('works with key function for objects', () => {
+    const a = [{ id: 1 }, { id: 2 }, { id: 3 }]
+    const b = [{ id: 2 }, { id: 4 }]
+    expect(intersection(a, b, x => x.id)).toEqual([{ id: 2 }])
+  })
+
+  it('preserves order of first array', () => {
+    expect(intersection([3, 1, 2], [2, 3])).toEqual([3, 2])
+  })
+})
+
+describe('difference', () => {
+  it('returns items in a not in b', () => {
+    expect(difference([1, 2, 3, 4], [2, 4])).toEqual([1, 3])
+  })
+
+  it('returns all items when b is empty', () => {
+    expect(difference([1, 2, 3], [])).toEqual([1, 2, 3])
+  })
+
+  it('returns empty when all items are in b', () => {
+    expect(difference([1, 2], [1, 2, 3])).toEqual([])
+  })
+
+  it('handles empty first array', () => {
+    expect(difference([], [1, 2, 3])).toEqual([])
+  })
+
+  it('works with key function for objects', () => {
+    const all = [{ id: 1 }, { id: 2 }, { id: 3 }]
+    const active = [{ id: 1 }, { id: 3 }]
+    expect(difference(all, active, x => x.id)).toEqual([{ id: 2 }])
+  })
+
+  it('preserves order', () => {
+    expect(difference([3, 1, 2, 4], [2, 3])).toEqual([1, 4])
+  })
+})
+
+describe('shuffle', () => {
+  it('returns same length', () => {
+    expect(shuffle([1, 2, 3, 4, 5])).toHaveLength(5)
+  })
+
+  it('contains same items', () => {
+    const arr = [1, 2, 3, 4, 5]
+    expect(shuffle(arr).sort()).toEqual([...arr].sort())
+  })
+
+  it('does not mutate original', () => {
+    const arr = [1, 2, 3, 4, 5]
+    const original = [...arr]
+    shuffle(arr)
+    expect(arr).toEqual(original)
+  })
+
+  it('handles empty array', () => {
+    expect(shuffle([])).toEqual([])
+  })
+
+  it('handles single item', () => {
+    expect(shuffle([42])).toEqual([42])
+  })
+})
+
+describe('flatten', () => {
+  it('flattens one level', () => {
+    expect(flatten([[1, 2], [3, 4], [5]])).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it('handles empty array', () => {
+    expect(flatten([])).toEqual([])
+  })
+
+  it('handles empty inner arrays', () => {
+    expect(flatten([[], [1], [], [2, 3]])).toEqual([1, 2, 3])
+  })
+
+  it('handles single inner array', () => {
+    expect(flatten([[1, 2, 3]])).toEqual([1, 2, 3])
+  })
+
+})
+
+describe('range', () => {
+  it('generates basic range', () => {
+    expect(range(0, 5)).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('generates range with step', () => {
+    expect(range(0, 10, 2)).toEqual([0, 2, 4, 6, 8])
+  })
+
+  it('generates descending range', () => {
+    expect(range(5, 0, -1)).toEqual([5, 4, 3, 2, 1])
+  })
+
+  it('returns empty when start equals end', () => {
+    expect(range(5, 5)).toEqual([])
+  })
+
+  it('returns empty when direction conflicts with step', () => {
+    expect(range(0, 5, -1)).toEqual([])
+  })
+
+  it('throws on step 0', () => {
+    expect(() => range(0, 5, 0)).toThrow()
+  })
+
+  it('handles negative start', () => {
+    expect(range(-3, 0)).toEqual([-3, -2, -1])
+  })
+})
+
+describe('sample', () => {
+  it('returns an item from the array', () => {
+    const arr = [1, 2, 3, 4, 5]
+    const result = sample(arr)
+    expect(arr).toContain(result)
+  })
+
+  it('returns undefined for empty array', () => {
+    expect(sample([])).toBeUndefined()
+  })
+
+  it('returns the only item for single element array', () => {
+    expect(sample([42])).toBe(42)
+  })
+
+  it('returns different items over multiple calls', () => {
+    const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    const results = new Set(Array.from({ length: 100 }, () => sample(arr)))
+    expect(results.size).toBeGreaterThan(1)
+  })
+})
+
+describe('keyBy', () => {
+  it('keys by string field', () => {
+    const users = [{ id: '1', name: 'Zura' }, { id: '2', name: 'Alice' }]
+    const result = keyBy(users, x => x.id)
+    expect(result['1']?.name).toBe('Zura')
+    expect(result['2']?.name).toBe('Alice')
+  })
+
+  it('handles empty array', () => {
+    expect(keyBy([], x => x)).toEqual({})
+  })
+
+  it('last item wins on duplicate keys', () => {
+    const users = [{ id: '1', name: 'Zura' }, { id: '1', name: 'Other' }]
+    expect(keyBy(users, x => x.id)['1']?.name).toBe('Other')
+  })
+
+  it('result has correct number of keys', () => {
+    const items = [{ k: 'a' }, { k: 'b' }, { k: 'c' }]
+    expect(Object.keys(keyBy(items, x => x.k))).toHaveLength(3)
+  })
+})
+
+describe('without', () => {
+  it('removes specified values', () => {
+    expect(without([1, 2, 3, 4, 5], 2, 4)).toEqual([1, 3, 5])
+  })
+
+  it('returns same array when values not present', () => {
+    expect(without([1, 2, 3], 4, 5)).toEqual([1, 2, 3])
+  })
+
+  it('handles empty array', () => {
+    expect(without([], 1, 2)).toEqual([])
+  })
+
+  it('removes all occurrences', () => {
+    expect(without([1, 2, 1, 2, 1], 1)).toEqual([2, 2])
+  })
+
+  it('no values to remove returns original', () => {
+    expect(without([1, 2, 3])).toEqual([1, 2, 3])
+  })
+
+  it('works with strings', () => {
+    expect(without(['a', 'b', 'c', 'a'], 'a')).toEqual(['b', 'c'])
+  })
+})
+
+describe('union', () => {
+  it('merges two arrays deduped', () => {
+    expect(union([1, 2, 3], [2, 3, 4, 5])).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it('handles empty first array', () => {
+    expect(union([], [1, 2, 3])).toEqual([1, 2, 3])
+  })
+
+  it('handles empty second array', () => {
+    expect(union([1, 2, 3], [])).toEqual([1, 2, 3])
+  })
+
+  it('handles both empty', () => {
+    expect(union([], [])).toEqual([])
+  })
+
+  it('no duplicates in either array', () => {
+    expect(union([1, 2], [3, 4])).toEqual([1, 2, 3, 4])
+  })
+
+  it('works with key function for objects', () => {
+    const a = [{ id: 1, name: 'Zura' }]
+    const b = [{ id: 1, name: 'Other' }, { id: 2, name: 'Alice' }]
+    const result = union(a, b, x => x.id)
+    expect(result).toHaveLength(2)
+    expect(result[0]?.name).toBe('Zura')
+  })
+
+  it('preserves order — a items first', () => {
+    expect(union([3, 1], [2, 4])).toEqual([3, 1, 2, 4])
   })
 })

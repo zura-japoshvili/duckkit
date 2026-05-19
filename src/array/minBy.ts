@@ -14,5 +14,11 @@
  */
 export function minBy<T>(arr: T[], fn: (item: T) => number): T | undefined {
   if (arr.length === 0) return undefined
-  return arr.reduce((min, item) => fn(item) < fn(min) ? item : min)
+  let minItem = arr[0]!
+  let minVal = fn(minItem)
+  for (let i = 1; i < arr.length; i++) {
+    const val = fn(arr[i]!)
+    if (val < minVal) { minVal = val; minItem = arr[i]! }
+  }
+  return minItem
 }

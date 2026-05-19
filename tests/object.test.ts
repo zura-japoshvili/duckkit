@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { pick, omit, deepMerge, mapKeys, mapValues } from '../src/object/index'
 import { isEqual, deepClone } from '../src/object/index'
+import { invertObject, flattenObject, unflattenObject, filterKeys, filterValues, keys, values, entries, fromEntries } from '../src/object/index'
 
 describe('isEqual', () => {
   it('primitives — equal', () => expect(isEqual(1, 1)).toBe(true))
@@ -213,5 +214,167 @@ describe('mapValues', () => {
 
   it('identity fn returns same values', () => {
     expect(mapValues({ a: 1, b: 2 }, v => v)).toEqual({ a: 1, b: 2 })
+  })
+})
+
+describe('invertObject', () => {
+  it('flips keys and values', () => {
+    expect(invertObject({ a: '1', b: '2', c: '3' })).toEqual({ '1': 'a', '2': 'b', '3': 'c' })
+  })
+
+  it('handles empty object', () => {
+    expect(invertObject({})).toEqual({})
+  })
+
+  it('last value wins on duplicate values', () => {
+    expect(invertObject({ a: 'x', b: 'x' })).toEqual({ x: 'b' })
+  })
+
+  it('works with role maps', () => {
+    const roles = { admin: 'ROLE_ADMIN', user: 'ROLE_USER' }
+    expect(invertObject(roles)).toEqual({ ROLE_ADMIN: 'admin', ROLE_USER: 'user' })
+  })
+})
+
+describe('flattenObject', () => {
+  it('flattens nested object', () => {
+    expect(flattenObject({ a: { b: { c: 1 }, d: 2 }, e: 3 }))
+      .toEqual({ 'a.b.c': 1, 'a.d': 2, 'e': 3 })
+  })
+
+  it('handles already flat object', () => {
+    expect(flattenObject({ a: 1, b: 2 })).toEqual({ a: 1, b: 2 })
+  })
+
+  it('handles empty object', () => {
+    expect(flattenObject({})).toEqual({})
+  })
+
+  it('preserves arrays as values — does not flatten them', () => {
+    expect(flattenObject({ a: { b: [1, 2, 3] } })).toEqual({ 'a.b': [1, 2, 3] })
+  })
+
+  it('handles deeply nested object', () => {
+    expect(flattenObject({ a: { b: { c: { d: 1 } } } })).toEqual({ 'a.b.c.d': 1 })
+  })
+})
+
+describe('unflattenObject', () => {
+  it('restores nested structure', () => {
+    expect(unflattenObject({ 'a.b.c': 1, 'a.d': 2, 'e': 3 }))
+      .toEqual({ a: { b: { c: 1 }, d: 2 }, e: 3 })
+  })
+
+  it('handles already flat keys', () => {
+    expect(unflattenObject({ a: 1, b: 2 })).toEqual({ a: 1, b: 2 })
+  })
+
+  it('handles empty object', () => {
+    expect(unflattenObject({})).toEqual({})
+  })
+
+  it('flattenObject and unflattenObject are inverses', () => {
+    const original = { user: { name: 'Zura', address: { city: 'Tbilisi' } } }
+    expect(unflattenObject(flattenObject(original))).toEqual(original)
+  })
+})
+
+describe('filterKeys', () => {
+  it('keeps keys matching predicate', () => {
+    expect(filterKeys({ _id: 1, name: 'Zura', _internal: 2 }, k => !k.startsWith('_')))
+      .toEqual({ name: 'Zura' })
+  })
+
+  it('returns empty when nothing matches', () => {
+    expect(filterKeys({ a: 1, b: 2 }, () => false)).toEqual({})
+  })
+
+  it('returns all when everything matches', () => {
+    expect(filterKeys({ a: 1, b: 2 }, () => true)).toEqual({ a: 1, b: 2 })
+  })
+
+  it('handles empty object', () => {
+    expect(filterKeys({}, () => true)).toEqual({})
+  })
+
+  it('does not mutate the original', () => {
+    const obj = { a: 1, b: 2 }
+    filterKeys(obj, k => k === 'a')
+    expect(obj).toEqual({ a: 1, b: 2 })
+  })
+})
+
+describe('filterValues', () => {
+  it('keeps values matching predicate', () => {
+    expect(filterValues({ a: 1, b: null, c: 3 } as Record<string, number | null>, v => v !== null))
+      .toEqual({ a: 1, c: 3 })
+  })
+
+  it('returns empty when nothing matches', () => {
+    expect(filterValues({ a: 1, b: 2 }, v => v > 10)).toEqual({})
+  })
+
+  it('returns all when everything matches', () => {
+    expect(filterValues({ a: 1, b: 2 }, v => v > 0)).toEqual({ a: 1, b: 2 })
+  })
+
+  it('handles empty object', () => {
+    expect(filterValues({}, () => true)).toEqual({})
+  })
+
+  it('passes key to predicate', () => {
+    expect(filterValues({ a: 1, b: 2, c: 3 }, (_, k) => k !== 'b'))
+      .toEqual({ a: 1, c: 3 })
+  })
+
+  it('does not mutate the original', () => {
+    const obj = { a: 1, b: 2 }
+    filterValues(obj, v => v > 1)
+    expect(obj).toEqual({ a: 1, b: 2 })
+  })
+})
+
+describe('keys', () => {
+  it('returns array of keys', () => {
+    expect(keys({ a: 1, b: 2 })).toEqual(['a', 'b'])
+  })
+
+  it('handles empty object', () => {
+    expect(keys({})).toEqual([])
+  })
+})
+
+describe('values', () => {
+  it('returns array of values', () => {
+    expect(values({ a: 1, b: 2 })).toEqual([1, 2])
+  })
+
+  it('handles empty object', () => {
+    expect(values({})).toEqual([])
+  })
+})
+
+describe('entries', () => {
+  it('returns array of [key, value] pairs', () => {
+    expect(entries({ a: 1, b: 2 })).toEqual([['a', 1], ['b', 2]])
+  })
+
+  it('handles empty object', () => {
+    expect(entries({})).toEqual([])
+  })
+})
+
+describe('fromEntries', () => {
+  it('builds object from entries', () => {
+    expect(fromEntries([['name', 'Zura'], ['age', '25']])).toEqual({ name: 'Zura', age: '25' })
+  })
+
+  it('handles empty array', () => {
+    expect(fromEntries([])).toEqual({})
+  })
+
+  it('is inverse of entries', () => {
+    const obj = { a: 1, b: 2 }
+    expect(fromEntries(entries(obj) as [string, number][])).toEqual(obj)
   })
 })

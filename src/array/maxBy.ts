@@ -13,6 +13,12 @@
  * // highest scoring player
  */
 export function maxBy<T>(arr: T[], fn: (item: T) => number): T | undefined {
-  if (arr.length === 0) return undefined
-  return arr.reduce((max, item) => fn(item) > fn(max) ? item : max)
+  if (!arr.length) return undefined
+  let maxItem = arr[0]!
+  let maxVal = fn(maxItem)
+  for (let i = 1; i < arr.length; i++) {
+    const val = fn(arr[i]!)
+    if (val > maxVal) { maxVal = val; maxItem = arr[i]! }
+  }
+  return maxItem
 }

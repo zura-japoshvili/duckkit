@@ -8,6 +8,7 @@
  * - Does not choke on non-serializable values
  *
  * Does not handle: circular references, functions, class instances, Map, Set.
+ * For those cases, use the native `structuredClone()` available in Node 17+ and modern browsers.
  *
  * @param value - The value to clone
  * @returns A deep clone of the value
