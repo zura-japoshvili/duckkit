@@ -4,7 +4,7 @@ import {
   isToday, isYesterday, isWeekend, isThisWeek, isThisYear
 } from '../src/date/index'
 import { addDays, subDays, isBefore, isAfter } from '../src/date/index'
-
+import { startOfDay, endOfDay, startOfWeek, startOfMonth, isSameDay, addMonths, addYears } from '../src/date/index'
 
 // Wednesday May 13 2026 12:00:00 — fixed point in time for all tests
 const FIXED_NOW = new Date(2026, 4, 13, 12, 0, 0)
@@ -76,6 +76,55 @@ describe('subDays', () => {
   })
 })
 
+describe('addMonths', () => {
+  it('adds months correctly', () => {
+    expect(addMonths(new Date(2026, 0, 15), 3).getMonth()).toBe(3)
+  })
+
+  it('crosses year boundary', () => {
+    const result = addMonths(new Date(2026, 10, 1), 3)
+    expect(result.getFullYear()).toBe(2027)
+    expect(result.getMonth()).toBe(1)
+  })
+
+  it('handles month overflow — Jan 31 + 1 month', () => {
+    const result = addMonths(new Date(2026, 0, 31), 1)
+    expect(result.getMonth()).toBe(2) // JS overflows to March
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 0, 15)
+    addMonths(original, 1)
+    expect(original.getMonth()).toBe(0)
+  })
+
+  it('negative months go backward', () => {
+    expect(addMonths(new Date(2026, 5, 1), -3).getMonth()).toBe(2)
+  })
+})
+
+describe('addYears', () => {
+  it('adds years correctly', () => {
+    expect(addYears(new Date(2026, 4, 13), 1).getFullYear()).toBe(2027)
+  })
+
+  it('negative years go backward', () => {
+    expect(addYears(new Date(2026, 4, 13), -2).getFullYear()).toBe(2024)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 4, 13)
+    addYears(original, 1)
+    expect(original.getFullYear()).toBe(2026)
+  })
+
+  it('preserves month and day', () => {
+    const result = addYears(new Date(2026, 4, 13), 1)
+    expect(result.getMonth()).toBe(4)
+    expect(result.getDate()).toBe(13)
+  })
+})
+
 describe('isBefore', () => {
   it('returns true when a is before b', () => {
     expect(isBefore(new Date(2026, 0, 1), new Date(2026, 11, 31))).toBe(true)
@@ -103,6 +152,118 @@ describe('isAfter', () => {
   it('returns false when dates are equal', () => {
     const d = new Date(2026, 0, 1)
     expect(isAfter(d, d)).toBe(false)
+  })
+})
+
+describe('startOfDay', () => {
+  it('sets time to midnight', () => {
+    const result = startOfDay(new Date(2026, 4, 13, 14, 30, 0))
+    expect(result.getHours()).toBe(0)
+    expect(result.getMinutes()).toBe(0)
+    expect(result.getSeconds()).toBe(0)
+  })
+
+  it('preserves date', () => {
+    const result = startOfDay(new Date(2026, 4, 13, 23, 59, 59))
+    expect(result.getDate()).toBe(13)
+    expect(result.getMonth()).toBe(4)
+    expect(result.getFullYear()).toBe(2026)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 4, 13, 14, 30, 0)
+    startOfDay(original)
+    expect(original.getHours()).toBe(14)
+  })
+})
+
+describe('endOfDay', () => {
+  it('sets time to 23:59:59.999', () => {
+    const result = endOfDay(new Date(2026, 4, 13, 8, 0, 0))
+    expect(result.getHours()).toBe(23)
+    expect(result.getMinutes()).toBe(59)
+    expect(result.getSeconds()).toBe(59)
+    expect(result.getMilliseconds()).toBe(999)
+  })
+
+  it('preserves date', () => {
+    const result = endOfDay(new Date(2026, 4, 13))
+    expect(result.getDate()).toBe(13)
+    expect(result.getMonth()).toBe(4)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 4, 13, 8, 0, 0)
+    endOfDay(original)
+    expect(original.getHours()).toBe(8)
+  })
+})
+
+describe('startOfWeek', () => {
+  it('returns the Sunday of the current week', () => {
+    // May 13 2026 is Wednesday — Sunday is May 10
+    const result = startOfWeek(new Date(2026, 4, 13))
+    expect(result.getDate()).toBe(10)
+    expect(result.getDay()).toBe(0)
+  })
+
+  it('Sunday returns itself', () => {
+    const result = startOfWeek(new Date(2026, 4, 10))
+    expect(result.getDate()).toBe(10)
+  })
+
+  it('Saturday returns Sunday', () => {
+    const result = startOfWeek(new Date(2026, 4, 16))
+    expect(result.getDate()).toBe(10)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 4, 13)
+    startOfWeek(original)
+    expect(original.getDate()).toBe(13)
+  })
+})
+
+describe('startOfMonth', () => {
+  it('returns first day of month', () => {
+    const result = startOfMonth(new Date(2026, 4, 13))
+    expect(result.getDate()).toBe(1)
+    expect(result.getMonth()).toBe(4)
+  })
+
+  it('time is midnight', () => {
+    const result = startOfMonth(new Date(2026, 4, 13, 14, 30))
+    expect(result.getHours()).toBe(0)
+    expect(result.getMinutes()).toBe(0)
+  })
+
+  it('does not mutate original', () => {
+    const original = new Date(2026, 4, 13)
+    startOfMonth(original)
+    expect(original.getDate()).toBe(13)
+  })
+})
+
+describe('isSameDay', () => {
+  it('returns true for same day different time', () => {
+    expect(isSameDay(new Date(2026, 4, 13, 8, 0), new Date(2026, 4, 13, 22, 0))).toBe(true)
+  })
+
+  it('returns false for different days', () => {
+    expect(isSameDay(new Date(2026, 4, 13), new Date(2026, 4, 14))).toBe(false)
+  })
+
+  it('returns true for identical dates', () => {
+    const d = new Date(2026, 4, 13)
+    expect(isSameDay(d, d)).toBe(true)
+  })
+
+  it('returns false for same day different month', () => {
+    expect(isSameDay(new Date(2026, 4, 13), new Date(2026, 5, 13))).toBe(false)
+  })
+
+  it('returns false for same day different year', () => {
+    expect(isSameDay(new Date(2026, 4, 13), new Date(2025, 4, 13))).toBe(false)
   })
 })
 
@@ -188,8 +349,6 @@ describe('isWeekend', () => {
 })
 
 describe('isThisWeek', () => {
-  // FIXED_NOW is Wednesday May 13 2026
-  // current week: Sunday May 10 → Saturday May 16
   it('today is this week', () => expect(isThisWeek(new Date(2026, 4, 13))).toBe(true))
   it('start of week (Sunday) is this week', () => expect(isThisWeek(new Date(2026, 4, 10))).toBe(true))
   it('end of week (Saturday) is this week', () => expect(isThisWeek(new Date(2026, 4, 16))).toBe(true))
