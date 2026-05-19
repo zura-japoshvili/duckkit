@@ -3,6 +3,7 @@ import {
   capitalize, truncate, slugify, camelCase, snakeCase,
   kebabCase, pascalCase, titleCase, isEmpty, randomId, countOccurrences
 } from '../src/string/index'
+import { escapeHtml, unescapeHtml, template, words, mask, stripHtml, excerpt } from '../src/string/index'
 
 describe('capitalize', () => {
   it('capitalizes first letter', () => expect(capitalize('hello world')).toBe('Hello world'))
@@ -113,4 +114,111 @@ describe('countOccurrences', () => {
   it('is case sensitive', () => expect(countOccurrences('Hello hello', 'hello')).toBe(1))
   it('counts single character', () => expect(countOccurrences('mississippi', 's')).toBe(4))
   it('whole string is the substring', () => expect(countOccurrences('hello', 'hello')).toBe(1))
+})
+
+describe('escapeHtml', () => {
+  it('escapes &', () => expect(escapeHtml('Hello & World')).toBe('Hello &amp; World'))
+  it('escapes <', () => expect(escapeHtml('<div>')).toBe('&lt;div&gt;'))
+  it('escapes "', () => expect(escapeHtml('"quoted"')).toBe('&quot;quoted&quot;'))
+  it("escapes '", () => expect(escapeHtml("it's")).toBe('it&#39;s'))
+  it('escapes script tag', () => expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'))
+  it('handles empty string', () => expect(escapeHtml('')).toBe(''))
+  it('no special chars unchanged', () => expect(escapeHtml('hello world')).toBe('hello world'))
+})
+
+describe('unescapeHtml', () => {
+  it('unescapes &amp;', () => expect(unescapeHtml('Hello &amp; World')).toBe('Hello & World'))
+  it('unescapes &lt; and &gt;', () => expect(unescapeHtml('&lt;div&gt;')).toBe('<div>'))
+  it('unescapes &quot;', () => expect(unescapeHtml('&quot;quoted&quot;')).toBe('"quoted"'))
+  it('unescapes &#39;', () => expect(unescapeHtml('it&#39;s')).toBe("it's"))
+  it('handles empty string', () => expect(unescapeHtml('')).toBe(''))
+  it('is inverse of escapeHtml', () => {
+    const original = '<script>alert("xss") & more</script>'
+    expect(unescapeHtml(escapeHtml(original))).toBe(original)
+  })
+})
+
+describe('template', () => {
+  it('replaces single placeholder', () => {
+    expect(template('Hello {name}!', { name: 'Zura' })).toBe('Hello Zura!')
+  })
+
+  it('replaces multiple placeholders', () => {
+    expect(template('{title} {lastName}', { title: 'Mr', lastName: 'J' })).toBe('Mr J')
+  })
+
+  it('leaves missing keys as-is by default', () => {
+    expect(template('Hello {name}!', {})).toBe('Hello {name}!')
+  })
+
+  it('uses fallback for missing keys', () => {
+    expect(template('Hello {name}!', {}, 'stranger')).toBe('Hello stranger!')
+  })
+
+  it('handles number values', () => {
+    expect(template('Score: {score}', { score: 42 })).toBe('Score: 42')
+  })
+
+  it('handles empty string', () => {
+    expect(template('', { name: 'Zura' })).toBe('')
+  })
+
+  it('no placeholders returns string unchanged', () => {
+    expect(template('Hello World', { name: 'Zura' })).toBe('Hello World')
+  })
+})
+
+describe('words', () => {
+  it('splits camelCase', () => expect(words('fooBarBaz')).toEqual(['foo', 'bar', 'baz']))
+  it('splits snake_case', () => expect(words('foo_bar_baz')).toEqual(['foo', 'bar', 'baz']))
+  it('splits kebab-case', () => expect(words('foo-bar-baz')).toEqual(['foo', 'bar', 'baz']))
+  it('splits spaces', () => expect(words('hello world')).toEqual(['hello', 'world']))
+  it('handles FOOBar', () => expect(words('FOOBar')).toEqual(['foo', 'bar']))
+  it('handles empty string', () => expect(words('')).toEqual([]))
+  it('handles single word', () => expect(words('hello')).toEqual(['hello']))
+})
+
+describe('mask', () => {
+  it('masks all but last 4 by default', () => expect(mask('4242424242424242')).toBe('************4242'))
+  it('custom visible count', () => expect(mask('hello world', 5)).toBe('******world'))
+  it('visible count 0 masks all', () => expect(mask('hello', 0)).toBe('*****'))
+  it('visible count >= length returns full string', () => expect(mask('hi', 10)).toBe('hi'))
+  it('custom mask char', () => expect(mask('hello', 2, '•')).toBe('•••lo'))
+  it('handles empty string', () => expect(mask('', 4)).toBe(''))
+  it('exact visible count', () => expect(mask('hello', 5)).toBe('hello'))
+})
+
+describe('stripHtml', () => {
+  it('removes tags', () => expect(stripHtml('<p>Hello</p>')).toBe('Hello'))
+  it('removes nested tags', () => expect(stripHtml('<p>Hello <strong>World</strong></p>')).toBe('Hello World'))
+  it('removes anchor tags keeping text', () => expect(stripHtml('<a href="/about">About</a>')).toBe('About'))
+  it('handles string with no tags', () => expect(stripHtml('Hello World')).toBe('Hello World'))
+  it('handles empty string', () => expect(stripHtml('')).toBe(''))
+  it('handles self-closing tags', () => expect(stripHtml('Hello<br/>World')).toBe('HelloWorld'))
+})
+
+describe('excerpt', () => {
+  it('truncates at word boundary', () => {
+    expect(excerpt('Hello World foo bar', 15)).toBe('Hello World...')
+  })
+
+  it('returns unchanged if fits', () => {
+    expect(excerpt('Short', 20)).toBe('Short')
+  })
+
+  it('returns unchanged if exactly maxLength', () => {
+    expect(excerpt('Hello', 5)).toBe('Hello')
+  })
+
+it('uses custom suffix', () => {
+  expect(excerpt('Hello World foo', 14, ' →')).toBe('Hello World →')
+})
+
+  it('handles no space — cuts at limit', () => {
+    expect(excerpt('Superlongword', 8)).toBe('Super...')
+  })
+
+  it('handles empty string', () => {
+    expect(excerpt('', 10)).toBe('')
+  })
 })
