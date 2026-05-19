@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { clamp, lerp, roundTo, randomInt, inRange, truncateTo } from '../src/number/index'
+import { average, normalize, toOrdinal, toRoman, formatNumber, formatBytes } from '../src/number/index'
 
 describe('clamp', () => {
   it('returns value when within range', () => expect(clamp(50, 0, 100)).toBe(50))
@@ -93,4 +94,74 @@ describe('inRange', () => {
   it('works with negative range', () => expect(inRange(-5, -10, -1)).toBe(true))
   it('works when min equals max', () => expect(inRange(5, 5, 5)).toBe(true))
   it('returns false when min equals max and value differs', () => expect(inRange(6, 5, 5)).toBe(false))
+})
+
+describe('average', () => {
+  it('returns average of numbers', () => expect(average([1, 2, 3, 4, 5])).toBe(3))
+  it('returns 0 for empty array', () => expect(average([])).toBe(0))
+  it('handles single item', () => expect(average([42])).toBe(42))
+  it('works with floats', () => expect(average([1.5, 2.5])).toBe(2))
+  it('works with negative numbers', () => expect(average([-10, 10])).toBe(0))
+  it('handles two items', () => expect(average([10, 20])).toBe(15))
+})
+
+describe('normalize', () => {
+  it('maps value to 0-1 range', () => expect(normalize(150, 0, 200)).toBe(0.75))
+  it('maps value to custom range', () => expect(normalize(150, 0, 200, 0, 100)).toBe(75))
+  it('t=0 returns toMin', () => expect(normalize(0, 0, 100)).toBe(0))
+  it('t=1 returns toMax', () => expect(normalize(100, 0, 100)).toBe(1))
+  it('maps to negative range', () => expect(normalize(5, 0, 10, -1, 1)).toBe(0))
+  it('works with non-zero fromMin', () => expect(normalize(15, 10, 20)).toBe(0.5))
+})
+
+describe('toOrdinal', () => {
+  it('1st', () => expect(toOrdinal(1)).toBe('1st'))
+  it('2nd', () => expect(toOrdinal(2)).toBe('2nd'))
+  it('3rd', () => expect(toOrdinal(3)).toBe('3rd'))
+  it('4th', () => expect(toOrdinal(4)).toBe('4th'))
+  it('11th — not 11st', () => expect(toOrdinal(11)).toBe('11th'))
+  it('12th — not 12nd', () => expect(toOrdinal(12)).toBe('12th'))
+  it('13th — not 13rd', () => expect(toOrdinal(13)).toBe('13th'))
+  it('21st', () => expect(toOrdinal(21)).toBe('21st'))
+  it('22nd', () => expect(toOrdinal(22)).toBe('22nd'))
+  it('101st', () => expect(toOrdinal(101)).toBe('101st'))
+  it('111th', () => expect(toOrdinal(111)).toBe('111th'))
+  it('0th', () => expect(toOrdinal(0)).toBe('0th'))
+})
+
+describe('toRoman', () => {
+  it('1 → I', () => expect(toRoman(1)).toBe('I'))
+  it('4 → IV', () => expect(toRoman(4)).toBe('IV'))
+  it('9 → IX', () => expect(toRoman(9)).toBe('IX'))
+  it('14 → XIV', () => expect(toRoman(14)).toBe('XIV'))
+  it('40 → XL', () => expect(toRoman(40)).toBe('XL'))
+  it('90 → XC', () => expect(toRoman(90)).toBe('XC'))
+  it('400 → CD', () => expect(toRoman(400)).toBe('CD'))
+  it('900 → CM', () => expect(toRoman(900)).toBe('CM'))
+  it('1994 → MCMXCIV', () => expect(toRoman(1994)).toBe('MCMXCIV'))
+  it('2026 → MMXXVI', () => expect(toRoman(2026)).toBe('MMXXVI'))
+  it('3999 → MMMCMXCIX', () => expect(toRoman(3999)).toBe('MMMCMXCIX'))
+  it('throws for 0', () => expect(() => toRoman(0)).toThrow(RangeError))
+  it('throws for 4000', () => expect(() => toRoman(4000)).toThrow(RangeError))
+  it('throws for negative', () => expect(() => toRoman(-1)).toThrow(RangeError))
+})
+
+describe('formatNumber', () => {
+  it('adds thousand separators', () => expect(formatNumber(1000000)).toBe('1,000,000'))
+  it('handles decimals', () => expect(formatNumber(1234567.89)).toBe('1,234,567.89'))
+  it('custom separator', () => expect(formatNumber(1000, '.')).toBe('1.000'))
+  it('custom decimal separator', () => expect(formatNumber(1000.5, '.', ',')).toBe('1.000,5'))
+  it('no separator needed under 1000', () => expect(formatNumber(999)).toBe('999'))
+  it('handles 0', () => expect(formatNumber(0)).toBe('0'))
+  it('handles negative', () => expect(formatNumber(-1000)).toBe('-1,000'))
+})
+
+describe('formatBytes', () => {
+  it('0 bytes', () => expect(formatBytes(0)).toBe('0 B'))
+  it('1024 → 1 KB', () => expect(formatBytes(1024)).toBe('1 KB'))
+  it('1048576 → 1 MB', () => expect(formatBytes(1048576)).toBe('1 MB'))
+  it('1073741824 → 1 GB', () => expect(formatBytes(1073741824)).toBe('1 GB'))
+  it('handles decimals', () => expect(formatBytes(1234567)).toBe('1.18 MB'))
+  it('0 decimal places', () => expect(formatBytes(1234567, 0)).toBe('1 MB'))
+  it('handles bytes under 1KB', () => expect(formatBytes(512)).toBe('512 B'))
 })
