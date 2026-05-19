@@ -219,8 +219,24 @@ describe('chunk', () => {
     expect(() => chunk([1, 2], 0)).toThrow()
   })
 
+  it('throws on negative size', () => {
+    expect(() => chunk([1, 2], -1)).toThrow()
+  })
+
   it('handles empty array', () => {
     expect(chunk([], 3)).toEqual([])
+  })
+
+  it('size of 1 produces single-element chunks', () => {
+    expect(chunk([1, 2, 3], 1)).toEqual([[1], [2], [3]])
+  })
+
+  it('size equal to array length returns one chunk', () => {
+    expect(chunk([1, 2, 3], 3)).toEqual([[1, 2, 3]])
+  })
+
+  it('size larger than array length returns one chunk', () => {
+    expect(chunk([1, 2], 10)).toEqual([[1, 2]])
   })
 })
 
@@ -253,6 +269,12 @@ describe('unique', () => {
   it('keeps first occurrence when using key fn', () => {
     const users = [{ id: 1, name: 'Zura' }, { id: 1, name: 'Other' }]
     expect(unique(users, x => x.id)[0]?.name).toBe('Zura')
+  })
+
+  it('key fn returning same key for all items keeps only the first', () => {
+    const items = [{ v: 1 }, { v: 2 }, { v: 3 }]
+    expect(unique(items, () => 'same')).toHaveLength(1)
+    expect(unique(items, () => 'same')[0]?.v).toBe(1)
   })
 })
 

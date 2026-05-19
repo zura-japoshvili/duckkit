@@ -47,6 +47,8 @@ describe('truncateTo', () => {
     expect(truncateTo(5.059, 2)).toBe(5.05)
     expect(roundTo(5.059, 2)).toBe(5.06)
   })
+  it('works with negative number', () => expect(truncateTo(-5.789, 2)).toBe(-5.79))
+  it('uses Math.floor for negatives — floors toward −∞, not toward zero', () => expect(truncateTo(-3.9)).toBe(-4))
 })
 
 describe('randomInt', () => {

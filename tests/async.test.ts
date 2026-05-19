@@ -76,6 +76,74 @@ describe('retry', () => {
     const fn = vi.fn().mockRejectedValue('string error')
     await expect(retry(fn, 1)).rejects.toBeInstanceOf(Error)
   })
+
+  it('waits delayMs between retries', async () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('ok')
+
+    let resolved = false
+    retry(fn, 3, 500).then(() => { resolved = true })
+
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(resolved).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(fn).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(resolved).toBe(true)
+
+    vi.useRealTimers()
+  })
+
+  it('does not wait between retries when delayMs is 0', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('ok')
+    const result = await retry(fn, 3, 0)
+    expect(result).toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('doubles the delay with backoff=true', async () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail1'))
+      .mockRejectedValueOnce(new Error('fail2'))
+      .mockResolvedValue('ok')
+
+    let resolved = false
+    retry(fn, 3, 100, true).then(() => { resolved = true })
+
+    // first call fires immediately
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    // after 100ms — second call fires (first delay is 100ms)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(resolved).toBe(false)
+
+    // after another 100ms — not yet (backoff doubles to 200ms)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    // after another 100ms (total 200ms since 2nd call) — third call fires
+    await vi.advanceTimersByTimeAsync(100)
+    expect(fn).toHaveBeenCalledTimes(3)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(resolved).toBe(true)
+
+    vi.useRealTimers()
+  })
+
+  it('single attempt with delayMs still returns on success', async () => {
+    const fn = vi.fn().mockResolvedValue('single')
+    expect(await retry(fn, 1, 500)).toBe('single')
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('timeout', () => {
@@ -185,6 +253,15 @@ describe('safeAsync', () => {
     const result = await safeAsync(() => Promise.resolve(undefined))
     expect(result.ok).toBe(true)
   })
+
+  it('wraps thrown number in Error', async () => {
+    const result = await safeAsync(async () => { throw 42 })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toBeInstanceOf(Error)
+      expect(result.error.message).toBe('42')
+    }
+  })
 })
 
 describe('pipe', () => {
@@ -285,6 +362,30 @@ describe('memo', () => {
     const memoized = memo(fn)
     expect(memoized()).toBe(0)
     expect(memoized()).toBe(0)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('caches results keyed by object args via JSON.stringify', () => {
+    const fn = vi.fn((obj: { x: number }) => obj.x * 2)
+    const memoized = memo(fn)
+    expect(memoized({ x: 3 })).toBe(6)
+    expect(memoized({ x: 3 })).toBe(6)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('treats different object args as different cache keys', () => {
+    const fn = vi.fn((obj: { x: number }) => obj.x)
+    const memoized = memo(fn)
+    memoized({ x: 1 })
+    memoized({ x: 2 })
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('caches results for array args', () => {
+    const fn = vi.fn((arr: number[]) => arr.reduce((a, b) => a + b, 0))
+    const memoized = memo(fn)
+    expect(memoized([1, 2, 3])).toBe(6)
+    expect(memoized([1, 2, 3])).toBe(6)
     expect(fn).toHaveBeenCalledTimes(1)
   })
 })

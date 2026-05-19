@@ -283,6 +283,10 @@ describe('timeAgo', () => {
   it('months ago', () => expect(timeAgo(ago(60 * 86400_000))).toBe('2 months ago'))
   it('years ago', () => expect(timeAgo(ago(400 * 86400_000))).toBe('1 year ago'))
   it('multiple years ago', () => expect(timeAgo(ago(800 * 86400_000))).toBe('2 years ago'))
+  it('exactly 59 seconds is still just now', () => expect(timeAgo(ago(59_000))).toBe('just now'))
+  it('exactly 60 seconds is 1 minute ago', () => expect(timeAgo(ago(60_000))).toBe('1 minute ago'))
+  it('2 minutes ago', () => expect(timeAgo(ago(2 * 60_000))).toBe('2 minutes ago'))
+  it('2 hours ago', () => expect(timeAgo(ago(2 * 3600_000))).toBe('2 hours ago'))
 })
 
 describe('formatDate', () => {
@@ -300,6 +304,10 @@ describe('formatDate', () => {
   it('January full name', () => expect(formatDate(new Date(2026, 0, 1), 'MMMM')).toBe('January'))
   it('December short name', () => expect(formatDate(new Date(2026, 11, 1), 'MMM')).toBe('Dec'))
   it('unknown tokens are preserved', () => expect(formatDate(date, 'YYYY-[Q1]')).toBe('2026-[Q1]'))
+  it('DD zero-pads single digit day', () => expect(formatDate(new Date(2026, 0, 5), 'DD')).toBe('05'))
+  it('mm zero-pads single digit minutes', () => expect(formatDate(new Date(2026, 0, 1, 10, 3, 0), 'mm')).toBe('03'))
+  it('ss zero-pads single digit seconds', () => expect(formatDate(new Date(2026, 0, 1, 10, 0, 7), 'ss')).toBe('07'))
+  it('formats midnight correctly', () => expect(formatDate(new Date(2026, 0, 1, 0, 0, 0), 'HH:mm:ss')).toBe('00:00:00'))
 })
 
 describe('daysBetween', () => {
