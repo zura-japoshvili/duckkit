@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { safe, safeAsync, pipe, memo, debounce } from '../src/async/index'
 import { throttle, retry, timeout, TimeoutError } from '../src/async/index'
+import { once, memoAsync, defer, parallel, sequential } from '../src/async/index'
 
 describe('throttle', () => {
   it('calls fn immediately on first call', () => {
@@ -293,15 +294,12 @@ describe('debounce', () => {
     vi.useFakeTimers()
     const fn = vi.fn()
     const debounced = debounce(fn, 100)
-
     debounced()
     debounced()
     debounced()
-
     expect(fn).not.toHaveBeenCalled()
     vi.advanceTimersByTime(100)
     expect(fn).toHaveBeenCalledTimes(1)
-
     vi.useRealTimers()
   })
 
@@ -309,11 +307,9 @@ describe('debounce', () => {
     vi.useFakeTimers()
     const fn = vi.fn()
     const debounced = debounce(fn, 100)
-
     debounced('hello', 42)
     vi.advanceTimersByTime(100)
     expect(fn).toHaveBeenCalledWith('hello', 42)
-
     vi.useRealTimers()
   })
 
@@ -321,17 +317,13 @@ describe('debounce', () => {
     vi.useFakeTimers()
     const fn = vi.fn()
     const debounced = debounce(fn, 100)
-
     debounced()
     vi.advanceTimersByTime(50)
     debounced()
     vi.advanceTimersByTime(50)
-
     expect(fn).not.toHaveBeenCalled()
-
     vi.advanceTimersByTime(50)
     expect(fn).toHaveBeenCalledTimes(1)
-
     vi.useRealTimers()
   })
 
@@ -339,14 +331,11 @@ describe('debounce', () => {
     vi.useFakeTimers()
     const fn = vi.fn()
     const debounced = debounce(fn, 100)
-
     debounced('first')
     debounced('second')
     debounced('third')
-
     vi.advanceTimersByTime(100)
     expect(fn).toHaveBeenCalledWith('third')
-
     vi.useRealTimers()
   })
 
@@ -354,14 +343,209 @@ describe('debounce', () => {
     vi.useFakeTimers()
     const fn = vi.fn()
     const debounced = debounce(fn, 100)
-
     debounced()
     vi.advanceTimersByTime(100)
     debounced()
     vi.advanceTimersByTime(100)
-
     expect(fn).toHaveBeenCalledTimes(2)
-
     vi.useRealTimers()
+  })
+})
+
+describe('once', () => {
+  it('calls fn only on first call', () => {
+    const fn = vi.fn(() => 42)
+    const onced = once(fn)
+    onced()
+    onced()
+    onced()
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns the same value on subsequent calls', () => {
+    const onced = once(() => Math.random())
+    const first = onced()
+    const second = onced()
+    expect(first).toBe(second)
+  })
+
+  it('passes args on first call', () => {
+    const fn = vi.fn((x: number) => x * 2)
+    const onced = once(fn)
+    expect(onced(5)).toBe(10)
+    expect(onced(99)).toBe(10)
+  })
+
+  it('works with void functions', () => {
+    const fn = vi.fn()
+    const onced = once(fn)
+    onced()
+    onced()
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('each once instance is independent', () => {
+    const fn = vi.fn(() => 1)
+    const a = once(fn)
+    const b = once(fn)
+    a()
+    b()
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('memoAsync', () => {
+  it('caches resolved value', async () => {
+    const fn = vi.fn().mockResolvedValue(42)
+    const memoized = memoAsync(fn)
+    await memoized('key')
+    await memoized('key')
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls fn for different args', async () => {
+    const fn = vi.fn().mockResolvedValue('ok')
+    const memoized = memoAsync(fn)
+    await memoized('a')
+    await memoized('b')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('concurrent calls with same args share one request', async () => {
+    const fn = vi.fn().mockResolvedValue('data')
+    const memoized = memoAsync(fn)
+    await Promise.all([memoized('x'), memoized('x'), memoized('x')])
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears cache on rejection so next call retries', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('ok')
+    const memoized = memoAsync(fn)
+    await expect(memoized('key')).rejects.toThrow('fail')
+    await expect(memoized('key')).resolves.toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns correct value', async () => {
+    const memoized = memoAsync(async (n: number) => n * 2)
+    expect(await memoized(5)).toBe(10)
+    expect(await memoized(5)).toBe(10)
+  })
+})
+
+describe('defer', () => {
+  it('resolves with the given value', async () => {
+    const d = defer<number>()
+    d.resolve(42)
+    expect(await d.promise).toBe(42)
+  })
+
+  it('rejects with the given reason', async () => {
+    const d = defer<number>()
+    d.reject(new Error('oops'))
+    await expect(d.promise).rejects.toThrow('oops')
+  })
+
+  it('resolves asynchronously', async () => {
+    const d = defer<string>()
+    setTimeout(() => d.resolve('done'), 10)
+    expect(await d.promise).toBe('done')
+  })
+
+  it('each defer is independent', async () => {
+    const a = defer<number>()
+    const b = defer<number>()
+    a.resolve(1)
+    b.resolve(2)
+    expect(await a.promise).toBe(1)
+    expect(await b.promise).toBe(2)
+  })
+})
+
+describe('parallel', () => {
+  it('runs all tasks and returns results', async () => {
+    const results = await parallel([
+      () => Promise.resolve(1),
+      () => Promise.resolve(2),
+      () => Promise.resolve(3),
+    ])
+    expect(results).toEqual([1, 2, 3])
+  })
+
+  it('preserves order of results', async () => {
+    const results = await parallel([
+      () => new Promise<number>(r => setTimeout(() => r(3), 30)),
+      () => new Promise<number>(r => setTimeout(() => r(1), 10)),
+      () => new Promise<number>(r => setTimeout(() => r(2), 20)),
+    ])
+    expect(results).toEqual([3, 1, 2])
+  })
+
+  it('handles empty array', async () => {
+    expect(await parallel([])).toEqual([])
+  })
+
+  it('respects concurrency limit', async () => {
+    let active = 0
+    let maxActive = 0
+
+    const task = () => new Promise<void>(r => {
+      active++
+      maxActive = Math.max(maxActive, active)
+      setTimeout(() => { active--; r() }, 10)
+    })
+
+    await parallel(Array.from({ length: 6 }, () => task), { concurrency: 2 })
+    expect(maxActive).toBeLessThanOrEqual(2)
+  })
+
+  it('without concurrency runs all at once', async () => {
+    const fn = vi.fn().mockResolvedValue('ok')
+    await parallel([fn, fn, fn])
+    expect(fn).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('sequential', () => {
+  it('runs tasks in order and returns results', async () => {
+    const order: number[] = []
+    await sequential([
+      async () => { order.push(1); return 1 },
+      async () => { order.push(2); return 2 },
+      async () => { order.push(3); return 3 },
+    ])
+    expect(order).toEqual([1, 2, 3])
+  })
+
+  it('returns results array', async () => {
+    const results = await sequential([
+      () => Promise.resolve('a'),
+      () => Promise.resolve('b'),
+      () => Promise.resolve('c'),
+    ])
+    expect(results).toEqual(['a', 'b', 'c'])
+  })
+
+  it('handles empty array', async () => {
+    expect(await sequential([])).toEqual([])
+  })
+
+  it('waits for each task before starting next', async () => {
+    const log: string[] = []
+    await sequential([
+      async () => { log.push('start 1'); await new Promise(r => setTimeout(r, 10)); log.push('end 1') },
+      async () => { log.push('start 2') },
+    ])
+    expect(log).toEqual(['start 1', 'end 1', 'start 2'])
+  })
+
+  it('rejects if any task fails', async () => {
+    await expect(sequential([
+      () => Promise.resolve(1),
+      () => Promise.reject(new Error('fail')),
+      () => Promise.resolve(3),
+    ])).rejects.toThrow('fail')
   })
 })

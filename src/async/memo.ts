@@ -3,7 +3,9 @@
  *
  * Uses `JSON.stringify` for cache keying, so works well with
  * primitives and plain objects. Not suitable for functions that take
- * non-serializable args (e.g. class instances, functions).
+ * non-serializable args (e.g. class instances, functions, `undefined`).
+ *
+ * For async functions, use `memoAsync` instead — it deduplicates concurrent calls.
  *
  * @param fn - The function to memoize
  * @returns A memoized version of `fn` with the same signature
