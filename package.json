@@ -1,6 +1,6 @@
 {
   "name": "duckkit",
-  "version": "0.1.5",
+  "version": "0.1.4",
   "description": "TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed. Typed groupBy, flatGroupBy, safe/Result type, pipe, and more.",
   "author": "Zura Japoshvili",
   "license": "MIT",
