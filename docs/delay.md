@@ -24,6 +24,8 @@ console.log('500ms later')
 
 `delay(0)` resolves on the next tick.
 
+> **Negative `ms` is treated as `0`:** `setTimeout` clamps negative values to 0, so `delay(-500)` resolves on the next tick with no error thrown.
+
 ---
 
 ## delaySkippable
@@ -50,6 +52,25 @@ await delaySkippable(5000, () => userSkipped, 200)
 ```
 
 The poll interval controls how quickly the skip is detected. Lower = more responsive, higher = less CPU. Default is 50ms.
+
+> **`pollInterval` must be less than `ms`:** If `pollInterval` is larger than `ms`, the timeout fires before the interval ever runs — the skip condition can never trigger.
+>
+> ```typescript
+> await delaySkippable(100, () => skip, 5000)
+> // interval never fires — skip has no effect ⚠️
+> ```
+>
+> As a rule, keep `pollInterval` well below `ms`. The default of 50ms is safe for most cases.
+
+> **Errors in `condition()` cause the promise to hang permanently:** If the condition function throws, the error is swallowed inside the `setInterval` callback. The timeout and interval keep running but the promise never settles — it leaks indefinitely.
+>
+> ```typescript
+> await delaySkippable(3000, () => {
+>   throw new Error('oops')  // promise hangs forever ❌
+> })
+> ```
+>
+> Always keep `condition` side-effect-free and guaranteed not to throw.
 
 ---
 
@@ -79,6 +100,18 @@ If the signal is already aborted when called, rejects immediately. Once aborted,
 
 Use `delaySkippable` when you control the condition yourself. Use `delayWithAbort` when you need to integrate with the native `AbortController` API — for example, cancelling fetch requests and delays together with the same signal.
 
+> **Abort reason is ignored:** `delayWithAbort` always rejects with `new DOMException('Delay aborted', 'AbortError')` regardless of what was passed to `controller.abort(reason)`. If your code relies on the abort reason, extract it from `signal.reason` directly in the catch block.
+>
+> ```typescript
+> try {
+>   await delayWithAbort(3000, signal)
+> } catch (e) {
+>   console.log(signal.reason)  // read the reason here instead ✅
+> }
+> ```
+
+> **`DOMException` is not available in Node.js before v18:** `DOMException` became a global in Node 18. In older Node versions, this function throws a `ReferenceError` instead of `AbortError` when the signal fires. If you need to support Node < 18, polyfill `DOMException` or check your runtime version.
+
 ---
 
 ## repeat
@@ -100,7 +133,7 @@ No delay is added after the last call — only between calls. `times = 0` never 
 // async callbacks are supported
 await repeat(3, 1000, async i => {
   const data = await fetchPage(i)
-  processs(data)
+  process(data)
 })
 
 // retry pattern
@@ -108,3 +141,23 @@ await repeat(3, 2000, async () => {
   await syncWithServer()
 })
 ```
+
+> **Errors in `fn` are silently swallowed — the promise hangs forever:** `repeat` uses the `new Promise(async resolve => {...})` pattern, which is an anti-pattern. If `fn` throws or rejects, the error is caught by the async executor but the outer promise never rejects and never resolves. It just hangs.
+>
+> ```typescript
+> await repeat(3, 500, async () => {
+>   throw new Error('failed')  // swallowed — promise hangs forever ❌
+> })
+> ```
+>
+> Until this is fixed in the source, wrap your callback in a try/catch and handle errors inside it:
+>
+> ```typescript
+> await repeat(3, 500, async i => {
+>   try {
+>     await riskyOperation(i)
+>   } catch (e) {
+>     console.error('iteration failed:', e)
+>   }
+> })
+> ```

@@ -22,6 +22,22 @@ capitalize('hELLO')        // "HELLO" — only first letter changed
 capitalize('')             // ""
 ```
 
+> **Breaks on emoji and multi-code-unit characters:** `charAt(0)` operates on UTF-16 code units. Emoji and characters above U+FFFF are two code units — `charAt(0)` returns the first half of the surrogate pair, splitting the character and corrupting the string.
+>
+> ```typescript
+> capitalize('😀hello')  // "\uD83Dhello" — emoji is split ❌
+> ```
+>
+> For Unicode-safe first-character access, use spread or `[...str][0]`:
+>
+> ```typescript
+> function capitalizeSafe(str: string): string {
+>   if (!str) return str
+>   const chars = [...str]
+>   return chars[0]!.toUpperCase() + chars.slice(1).join('')
+> }
+> ```
+
 ---
 
 ### camelCase
@@ -39,7 +55,14 @@ camelCase('foo bar baz')  // "fooBarBaz"
 camelCase('FOO_BAR')      // "fooBar"
 ```
 
-Note: `camelCase('fooBar')` returns `'foobar'` — the input is lowercased first, then separators are used to capitalize.
+> **Already-camelCase input gets flattened:** The input is fully lowercased before separators are processed. Existing camel humps are lost.
+>
+> ```typescript
+> camelCase('fooBar')     // "foobar" ⚠️ — not "fooBar"
+> camelCase('myAPIKey')   // "myapikey" ⚠️
+> ```
+>
+> Only use this to convert from a clearly-separated format (snake, kebab, spaces). Not for re-casing already-camel strings.
 
 ---
 
@@ -89,7 +112,11 @@ pascalCase('foo-bar-baz')  // "FooBarBaz"
 pascalCase('hello world')  // "HelloWorld"
 ```
 
-Note: `pascalCase('fooBarBaz')` returns `'Foobarbaz'` — input is lowercased first.
+> **Already-camelCase input gets flattened:** Same as `camelCase` — the input is lowercased first.
+>
+> ```typescript
+> pascalCase('fooBarBaz')  // "Foobarbaz" ⚠️ — not "FooBarBaz"
+> ```
 
 ---
 
@@ -106,6 +133,12 @@ titleCase('hello world')   // "Hello World"
 titleCase('hello  world')  // "Hello  World" — preserves spacing
 titleCase('hELLO wORLD')   // "HELLO WORLD" — does not lowercase existing uppercase
 ```
+
+> **Hyphenated words get each part capitalized:** `\b` (word boundary) exists on both sides of a hyphen since `-` is not a word character. Each part of a hyphenated word is treated as a separate word.
+>
+> ```typescript
+> titleCase('well-known issue')  // "Well-Known Issue" — may or may not be desired
+> ```
 
 ---
 
@@ -146,6 +179,15 @@ slugify('!hello!')            // "hello" — leading/trailing hyphens removed
 slugify('')                   // ""
 ```
 
+> **Non-ASCII letters are stripped entirely:** The `[^\w\s-]` filter uses `\w`, which is ASCII-only in JS (`[a-zA-Z0-9_]`). Accented, CJK, Cyrillic, and other Unicode letters are removed — not transliterated.
+>
+> ```typescript
+> slugify('Héllo Wörld')  // "hllo-wrld" ❌ — é and ö are removed
+> slugify('Привет')       // "" ❌ — Cyrillic stripped entirely
+> ```
+>
+> If you need to support non-ASCII titles, transliterate to ASCII first (e.g. `héllo` → `hello`) before calling `slugify`, or use a library like `slugify` (npm) that handles Unicode transliteration.
+
 ---
 
 ## truncate
@@ -163,6 +205,14 @@ truncate('Hi', 8)                 // "Hi" — fits, unchanged
 truncate('Hello World', 5, '')    // "Hello" — empty suffix
 truncate('Hello World', 3, '...') // "..." — suffix fills entire length
 ```
+
+> **`suffix` longer than `maxLength` produces output over the limit:** `str.slice(0, maxLength - suffix.length)` gets a negative index when `suffix.length > maxLength`. A negative slice index counts from the end of the string, making the result far longer than intended.
+>
+> ```typescript
+> truncate('Hello World', 2, '...')  // "Hello Worl..." ❌ — not 2 chars
+> ```
+>
+> Always ensure `maxLength > suffix.length`. A safe check: `if (maxLength <= suffix.length) return suffix.slice(0, maxLength)`.
 
 ---
 
@@ -188,6 +238,8 @@ Key difference from `truncate`:
 truncate('Hello World foo', 13)  // "Hello World f..." — cuts mid-word
 excerpt('Hello World foo', 13)   // "Hello World..." — cuts at word boundary
 ```
+
+> **Same `suffix > maxLength` bug as `truncate`:** If `suffix.length > maxLength`, `limit` becomes negative and the result is longer than `maxLength`. Same fix applies.
 
 ---
 
@@ -226,6 +278,10 @@ randomId(0)    // ""
 
 Uses `crypto.getRandomValues` — secure, no `Math.random`. Works in browser and Node 18+.
 
+> **Slight character distribution bias:** The charset has 62 characters. Byte values 0–255 don't divide evenly by 62 (remainder 8), so the first 8 characters in the charset (`A–H`) are selected slightly more often than the rest. For most use cases the bias is negligible, but it's not perfectly uniform.
+
+> **`crypto` not available in Node < 18:** `crypto.getRandomValues` is a global in browsers and Node 18+. Older Node versions throw `ReferenceError: crypto is not defined`. If you need to support Node < 18, import it explicitly: `import { webcrypto as crypto } from 'crypto'`.
+
 ---
 
 ## countOccurrences
@@ -263,6 +319,14 @@ mask('hello', 2, '•')          // "•••lo" — custom mask char
 mask('', 4)                    // ""
 ```
 
+> **Multi-character `maskChar` produces a longer result than expected:** `maskChar.repeat(n)` repeats the entire string `n` times. A 2-char mask char representing 1 masked character doubles the masked portion's length.
+>
+> ```typescript
+> mask('hello', 4, '**')  // "**ello" — 2 chars masking 1 position ⚠️
+> ```
+>
+> Stick to single-character values for `maskChar`.
+
 ---
 
 ## escapeHtml
@@ -289,6 +353,14 @@ escapeHtml('Hello & "World"')
 // "Hello &amp; &quot;World&quot;"
 ```
 
+> **Double-applying creates double-encoded output:** Running `escapeHtml` on already-escaped content encodes the `&` in entities like `&lt;`, turning them into `&amp;lt;`.
+>
+> ```typescript
+> escapeHtml(escapeHtml('<'))  // "&amp;lt;" ❌ — not "&lt;"
+> ```
+>
+> Only call `escapeHtml` on raw, unescaped input.
+
 ---
 
 ## unescapeHtml
@@ -304,12 +376,26 @@ unescapeHtml('&lt;div&gt;Hello &amp; World&lt;/div&gt;')
 // "<div>Hello & World</div>"
 ```
 
-They are true inverses of each other:
+They are true inverses of each other for the 5 covered entities:
 
 ```typescript
 const original = '<script>alert("xss") & more</script>'
 unescapeHtml(escapeHtml(original)) === original  // true ✅
 ```
+
+> **Only handles the 5 entities from `escapeHtml`:** Other named entities like `&nbsp;`, `&copy;`, `&eacute;`, and numeric entities like `&#160;` or `&#x00A0;` are not replaced — they pass through unchanged.
+>
+> ```typescript
+> unescapeHtml('&nbsp;&copy;')  // "&nbsp;&copy;" — unchanged ⚠️
+> ```
+>
+> For full HTML entity decoding, use a DOM-based approach (`textarea.innerHTML = str`) or a library like `he`.
+
+> **`&amp;lt;` fully unescapes to `<`:** Because `&amp;` is replaced first in the chain, `&amp;lt;` becomes `&lt;`, which then becomes `<`. If the input was double-escaped, `unescapeHtml` will over-decode it.
+>
+> ```typescript
+> unescapeHtml('&amp;lt;')  // "<" — not "&lt;" ⚠️
+> ```
 
 ---
 
@@ -325,7 +411,7 @@ stripHtml(str: string): string
 stripHtml('<p>Hello <strong>World</strong></p>')  // "Hello World"
 stripHtml('<a href="/about">About us</a>')         // "About us"
 stripHtml('No tags here')                          // "No tags here"
-stripHtml('Hello<br/>World')                       // "HelloWorld" — no space added
+stripHtml('Hello<br/>World')                       // "HelloWorld" — no space added between tags
 ```
 
 Does not unescape HTML entities — use `unescapeHtml` after if needed. Does not sanitize — use a dedicated library for XSS protection.
@@ -351,3 +437,18 @@ template('Hello {name}!', {})                         // "Hello {name}!"
 // missing keys — with fallback
 template('Hello {name}!', {}, 'stranger')             // "Hello stranger!"
 ```
+
+> **Keys must match `\w+` — hyphens and dots silently don't work:** The placeholder regex is `/\{(\w+)\}/g`, which only matches letters, digits, and underscores. Keys with hyphens or dots never resolve.
+>
+> ```typescript
+> template('{my-key}', { 'my-key': 'value' })     // "{my-key}" — no match ⚠️
+> template('{user.name}', { 'user.name': 'Zura' }) // "{user.name}" — no match ⚠️
+> ```
+>
+> Stick to alphanumeric keys with underscores: `{user_name}`, `{first_name}`.
+
+> **`{{key}}` partially resolves:** The inner `{key}` matches, leaving the outer braces in the result.
+>
+> ```typescript
+> template('{{name}}', { name: 'Zura' })  // "{Zura}" ⚠️
+> ```

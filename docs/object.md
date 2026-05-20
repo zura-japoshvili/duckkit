@@ -70,19 +70,34 @@ deepMerge({ tags: [1, 2] }, { tags: [3] })
 // { tags: [3] } — not [1, 2, 3]
 ```
 
-Deeply nested merges work correctly:
-
-```typescript
-deepMerge({ a: { b: { c: 1 } } }, { a: { b: { d: 2 } } })
-// { a: { b: { c: 1, d: 2 } } }
-```
-
 If `override` has a primitive where `base` has an object, the primitive wins:
 
 ```typescript
 deepMerge({ a: { b: 1 } }, { a: 42 })
 // { a: 42 }
 ```
+
+> **`Date` values are destroyed:** `isPlainObject` returns `true` for `Date` instances, so dates in either argument are recursed into as plain objects. `Object.keys(new Date())` returns `[]`, leaving an empty object in place of the date.
+>
+> ```typescript
+> deepMerge({ createdAt: new Date() }, { createdAt: new Date() })
+> // { createdAt: {} } ❌ — date is gone
+> ```
+>
+> If your objects contain `Date` values, clone or reassign them manually after merging, or use `structuredClone()` for the whole thing.
+
+> **`undefined` in override silently clears base values:** Keys present in `override` with value `undefined` overwrite whatever was in `base`.
+>
+> ```typescript
+> deepMerge({ name: 'Zura', role: 'admin' }, { role: undefined })
+> // { name: 'Zura', role: undefined } — role is cleared ⚠️
+> ```
+>
+> If you only want to merge defined values, filter them out of override first:
+>
+> ```typescript
+> deepMerge(base, filterValues(override, v => v !== undefined))
+> ```
 
 ---
 
@@ -109,6 +124,17 @@ Handles: objects, arrays, dates, primitives, `null`, `undefined`.
 
 Does not handle: circular references, functions, class instances, `Map`, `Set`. For those cases, use the native `structuredClone()` available in Node 17+ and modern browsers.
 
+> **Symbol keys are silently dropped:** `Object.keys` does not return symbol-keyed properties, so any `Symbol`-keyed values on the original are absent from the clone with no error.
+>
+> ```typescript
+> const sym = Symbol('id')
+> const original = { name: 'Zura', [sym]: 42 }
+> const clone = deepClone(original)
+> clone[sym]  // undefined ❌ — symbol key is gone
+> ```
+>
+> If you need symbol keys preserved, use `structuredClone()` instead.
+
 ---
 
 ## isEqual
@@ -132,6 +158,23 @@ isEqual(null, undefined)            // false
 ```
 
 Does not handle circular references.
+
+> **`Map` and `Set` produce false positives:** Both pass the `typeof === 'object'` branch and are compared by `Object.keys`, which returns `[]` for both. Any two `Map` or `Set` instances compare as equal regardless of their contents.
+>
+> ```typescript
+> isEqual(new Map([['a', 1]]), new Map([['b', 2]]))  // true ❌ — wrong
+> isEqual(new Set([1, 2, 3]), new Set([4, 5, 6]))    // true ❌ — wrong
+> ```
+>
+> Same applies to `RegExp` — `/a/` and `/b/` compare as equal. Don't use `isEqual` with these types.
+
+> **`NaN` returns `false`:** `NaN === NaN` is `false` in JavaScript, and `isEqual` doesn't special-case it.
+>
+> ```typescript
+> isEqual(NaN, NaN)  // false ❌
+> ```
+>
+> If you need `NaN`-safe equality, use `Object.is(a, b)` for primitives.
 
 ---
 
@@ -217,6 +260,32 @@ flattenObject({ a: { b: [1, 2, 3] } })
 // { 'a.b': [1, 2, 3] }
 ```
 
+> **Keys containing dots break the round-trip with `unflattenObject`:** A key like `'a.b'` is indistinguishable from a nested `{ a: { b: ... } }` after flattening — both become `'a.b'`. Restoring via `unflattenObject` will produce the nested structure, not the original flat key.
+>
+> ```typescript
+> const obj = { 'a.b': 1 }
+> unflattenObject(flattenObject(obj))
+> // { a: { b: 1 } } ❌ — not the same as the original
+> ```
+>
+> Avoid dot characters in keys if you need the round-trip to be lossless.
+
+> **Empty nested objects are silently dropped:** An empty object `{}` is recursed into but produces no keys, so it disappears from the result entirely.
+>
+> ```typescript
+> flattenObject({ a: {}, b: 1 })
+> // { b: 1 } — a is gone ⚠️
+> ```
+
+> **`Date` values are silently dropped:** Dates pass the plain-object check (`typeof date === 'object'`, not null, not array), are recursed into, and produce no keys. The date disappears from the output.
+>
+> ```typescript
+> flattenObject({ createdAt: new Date() })
+> // {} ❌ — date is gone
+> ```
+>
+> Convert dates to strings or timestamps before flattening if you need them preserved.
+
 ---
 
 ## unflattenObject
@@ -232,13 +301,22 @@ unflattenObject({ 'a.b.c': 1, 'a.d': 2, 'e': 3 })
 // { a: { b: { c: 1 }, d: 2 }, e: 3 }
 ```
 
-They are true inverses of each other:
+They are true inverses of each other (for plain objects without dot keys, empty objects, or Date values):
 
 ```typescript
 const original = { user: { name: 'Zura', address: { city: 'Tbilisi' } } }
 unflattenObject(flattenObject(original))
 // deep equals original ✅
 ```
+
+> **Conflicting paths silently overwrite:** If a key and a dotted path starting with that key both exist, the primitive is replaced by the nested object with no error.
+>
+> ```typescript
+> unflattenObject({ 'a': 1, 'a.b': 2 })
+> // { a: { b: 2 } } — a: 1 is lost ❌
+> ```
+>
+> Ensure your flat keys don't have both `'x'` and `'x.y'` present at the same time.
 
 ---
 
@@ -314,3 +392,14 @@ fromEntries([['name', 'Zura'], ['age', '25']])
 fromEntries(entries(obj) as [string, number][])
 // deep equals obj ✅
 ```
+
+> **The type is a promise TypeScript can't enforce at runtime:** Due to structural typing, an object can carry more properties than its declared type. `keys`, `values`, and `entries` claim to return only the keys in `T`, but at runtime they return every key actually on the object — including extras that aren't in the type.
+>
+> ```typescript
+> type User = { name: string }
+> const user = { name: 'Zura', role: 'admin' } as User
+>
+> keys(user)  // ['name', 'role'] at runtime — typed as ('name')[] ⚠️
+> ```
+>
+> This is the same tradeoff as the native typed wrappers in every TypeScript codebase — the better types are worth it, just don't write logic that depends on the key list being exhaustive.

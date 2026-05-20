@@ -25,6 +25,15 @@ clamp(volume, 0, 100)    // safe volume level
 
 Returns `min` when `min === max`.
 
+> **`min > max` silently produces wrong results:** `Math.min(Math.max(value, min), max)` always returns `max` when `min > max`, regardless of `value`. No error is thrown.
+>
+> ```typescript
+> clamp(50, 100, 0)  // 0 — always ⚠️
+> clamp(5,  100, 0)  // 0 — always ⚠️
+> ```
+>
+> Always pass `min` and `max` in the right order. Consider asserting `min <= max` in development.
+
 ---
 
 ## lerp
@@ -73,11 +82,20 @@ roundTo(1234.5, -2)  // 1200 — negative decimals round to tens/hundreds
 roundTo(-1.567, 2)   // -1.57
 ```
 
+> **Floating point can cause incorrect rounding at midpoints:** `roundTo` multiplies by a power of 10 before calling `Math.round`. Due to JS floating point, some midpoint values are represented just below their expected value — `1.045 * 100 = 104.49999999999999` — and round the wrong way.
+>
+> ```typescript
+> roundTo(1.045, 2)  // 1.04 ❌ — expected 1.05
+> roundTo(1.255, 2)  // 1.25 ❌ — expected 1.26
+> ```
+>
+> For financial values where exact midpoint rounding is critical, use `Number.EPSILON`-compensated rounding or a dedicated library. For display purposes, the error is typically invisible.
+
 ---
 
 ## truncateTo
 
-Truncates a number to a specified number of decimal places without rounding. Always floors toward zero — the result is never larger than the input.
+Truncates a number to a specified number of decimal places without rounding. The result is never larger in absolute value than the input.
 
 ```typescript
 truncateTo(value: number, decimals?: number): number
@@ -98,6 +116,22 @@ truncateTo(5.059, 2) // 5.05 — floors
 
 Use `truncateTo` for financial values, win totals, or anywhere you must not overstate a value.
 
+> **Negative numbers floor toward −∞, not toward zero:** The implementation uses `Math.floor`, which floors toward negative infinity. For negative inputs, this means the result is more negative than the input — the opposite of "toward zero".
+>
+> ```typescript
+> truncateTo(-5.999, 2)  // -6.00 ❌ — floors to -6, not -5.99
+> truncateTo(-5.059, 2)  // -5.06 ❌ — floors to -5.06, not -5.05
+> ```
+>
+> If you need true truncation toward zero for negative numbers, use `Math.trunc` manually:
+>
+> ```typescript
+> function truncateTowardZero(value: number, decimals: number): number {
+>   const factor = Math.pow(10, decimals)
+>   return Math.trunc(value * factor) / factor
+> }
+> ```
+
 ---
 
 ## randomInt
@@ -114,6 +148,18 @@ randomInt(0, 100)  // random percentage
 randomInt(5, 5)    // always 5
 randomInt(-10, -1) // negative range works
 ```
+
+> **`min > max` returns values in an unexpected range:** The formula `Math.floor(Math.random() * (max - min + 1)) + min` produces a negative multiplier when `min > max`, giving results that are neither within `[min, max]` nor an error.
+>
+> ```typescript
+> randomInt(10, 5)  // returns a value in [6, 9] ⚠️ — not what you'd expect
+> ```
+
+> **Float arguments produce float results:** `randomInt` doesn't validate that `min` and `max` are integers. Passing floats gives float results.
+>
+> ```typescript
+> randomInt(1.5, 3.5)  // returns 1.5, 2.5, or 3.5 — not integers ⚠️
+> ```
 
 ---
 
@@ -134,6 +180,14 @@ inRange(5, 5, 5)    // true  — equal when min === max
 if (!inRange(age, 0, 120)) throw new Error('invalid age')
 if (!inRange(opacity, 0, 1)) throw new Error('invalid opacity')
 ```
+
+> **`min > max` always returns `false`:** `value >= 10 && value <= 5` can never be true. No error is thrown.
+>
+> ```typescript
+> inRange(7, 10, 5)  // false — always, even though 7 is "between" 5 and 10 ⚠️
+> ```
+>
+> Always pass `min` before `max`.
 
 ---
 
@@ -179,6 +233,26 @@ normalize(mouseX, 0, windowWidth, -45, 45)
 normalize(score, 0, maxScore, 0, 100)
 ```
 
+> **`fromMin === fromMax` produces `NaN`:** Division by zero when the source range is a single point.
+>
+> ```typescript
+> normalize(5, 5, 5)  // NaN ❌
+> ```
+>
+> Guard against this if your range bounds could be equal: `fromMin === fromMax ? toMin : normalize(...)`.
+
+> **Values outside the source range extrapolate:** Like `lerp`, `normalize` does not clamp the output. A value outside `fromMin–fromMax` maps to a value outside `toMin–toMax`.
+>
+> ```typescript
+> normalize(250, 0, 200, 0, 100)  // 125 — beyond toMax ⚠️
+> ```
+>
+> Wrap with `clamp` if you need the output bounded:
+>
+> ```typescript
+> clamp(normalize(value, fromMin, fromMax, toMin, toMax), toMin, toMax)
+> ```
+
 ---
 
 ## toOrdinal
@@ -203,6 +277,15 @@ toOrdinal(111) // "111th"
 ```
 
 Handles the 11th/12th/13th edge cases correctly.
+
+> **Float and `NaN` inputs produce nonsense output:** No validation is performed — the modulo checks don't match floats or `NaN`, so they fall through to the default.
+>
+> ```typescript
+> toOrdinal(1.5)  // "1.5th" ⚠️
+> toOrdinal(NaN)  // "NaNth" ⚠️
+> ```
+>
+> Only pass whole integers.
 
 ---
 
@@ -229,6 +312,7 @@ Throws `RangeError` for values outside 1–3999:
 ```typescript
 toRoman(0)     // throws RangeError
 toRoman(4000)  // throws RangeError
+toRoman(1.5)   // throws RangeError — floats not accepted
 toRoman(-1)    // throws RangeError
 ```
 
@@ -243,18 +327,27 @@ formatNumber(value: number, separator?: string, decimal?: string): string
 ```
 
 ```typescript
-formatNumber(1000000)            // "1,000,000"
-formatNumber(1234567.89)         // "1,234,567.89"
-formatNumber(999)                // "999" — no separator needed
-formatNumber(-1000)              // "-1,000"
-formatNumber(0)                  // "0"
+formatNumber(1000000)             // "1,000,000"
+formatNumber(1234567.89)          // "1,234,567.89"
+formatNumber(999)                 // "999" — no separator needed
+formatNumber(-1000)               // "-1,000"
+formatNumber(0)                   // "0"
 
 // European format
-formatNumber(1000, '.')          // "1.000"
-formatNumber(1000.5, '.', ',')   // "1.000,5"
+formatNumber(1000, '.')           // "1.000"
+formatNumber(1000.5, '.', ',')    // "1.000,5"
 ```
 
 For locale-aware formatting with currency support, use the native `Intl.NumberFormat` API instead.
+
+> **Scientific notation is not handled:** JavaScript converts numbers ≥ 1e21 to scientific notation via `String()`. The regex finds no digit groups to separate and returns the scientific notation string as-is.
+>
+> ```typescript
+> formatNumber(1e21)   // "1e+21" ⚠️ — not "1,000,000,000,000,000,000,000"
+> formatNumber(1e-7)   // "1e-7"  ⚠️
+> ```
+>
+> If you need to format very large numbers, convert them to a fixed string first: `value.toFixed(0)` for integers.
 
 ---
 
@@ -277,3 +370,17 @@ formatBytes(1234567, 0)  // "1 MB" — 0 decimal places
 ```
 
 Supports B, KB, MB, GB, TB, PB.
+
+> **Negative bytes returns `"NaN undefined"`:** `Math.log` of a negative number is `NaN`, making the unit index `NaN` and `units[NaN]` undefined.
+>
+> ```typescript
+> formatBytes(-1024)  // "NaN undefined" ❌
+> ```
+
+> **Values beyond PB return `"... undefined"`:** The `units` array has 6 entries (B through PB). Any value ≥ 2^60 (~1.15 exabytes) maps to index 6 or higher, which is out of bounds.
+>
+> ```typescript
+> formatBytes(2 ** 60)  // "1 undefined" ❌
+> ```
+>
+> If either case is possible in your app, guard with a check before calling: `bytes > 0 && bytes < 2 ** 60`.
