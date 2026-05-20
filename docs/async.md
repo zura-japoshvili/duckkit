@@ -108,7 +108,7 @@ const result = pipe('  hello world  ')
 Memoizes a function — caches results by arguments. Subsequent calls with the same args return instantly without calling the function again.
 
 ```typescript
-memo<Args, R>(fn: (...args: Args) => R): (...args: Args) => R
+memo<Args, R>(fn: (...args: Args) => R, options?: { maxSize?: number }): (...args: Args) => R
 ```
 
 ```typescript
@@ -119,6 +119,13 @@ calculate(6)  // runs — different arg
 ```
 
 Uses `JSON.stringify` for cache keying. Falsy return values (`0`, `false`, `null`) are cached correctly. Each memoized instance has its own cache.
+
+Use `maxSize` to cap memory usage. When the limit is reached, the oldest cached entry is evicted (FIFO):
+
+```typescript
+const calculate = memo((n: number) => n * n * n, { maxSize: 100 })
+// cache never grows beyond 100 entries ✅
+```
 
 For async functions, use `memoAsync` instead.
 
@@ -132,8 +139,6 @@ For async functions, use `memoAsync` instead.
 >
 > Avoid `null` and `undefined` as args if they need to produce different results.
 
-> **Cache grows unbounded:** There is no max size or expiry. For functions called with many unique args over a long runtime, memory usage grows indefinitely. If that's a concern, implement your own cache with a size limit and pass it in, or clear the memoized instance periodically by recreating it.
-
 ---
 
 ## memoAsync
@@ -141,7 +146,7 @@ For async functions, use `memoAsync` instead.
 Like `memo` but for async functions. Caches the promise itself — so concurrent calls with the same args share one request instead of firing duplicates.
 
 ```typescript
-memoAsync<Args, R>(fn: (...args: Args) => Promise<R>): (...args: Args) => Promise<R>
+memoAsync<Args, R>(fn: (...args: Args) => Promise<R>, options?: { maxSize?: number }): (...args: Args) => Promise<R>
 ```
 
 ```typescript
@@ -157,7 +162,14 @@ await Promise.all([getUser('123'), getUser('123')])
 
 If the async function rejects, the cache entry is deleted so the next call retries instead of returning a cached rejection.
 
-> **Same `null`/`undefined` collision and unbounded cache as `memo`** — see notes above.
+Use `maxSize` to cap memory usage. Oldest entry is evicted when the limit is reached:
+
+```typescript
+const getUser = memoAsync(fetchUser, { maxSize: 200 })
+// safe for long-running apps — cache stays bounded ✅
+```
+
+> **Same `null`/`undefined` collision as `memo`** — see notes above.
 
 ---
 

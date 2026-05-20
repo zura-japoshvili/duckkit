@@ -19,16 +19,13 @@
  *   await fetchData()
  * })
  */
-export function repeat(
+export async function repeat(
   times: number,
   ms: number,
   fn: (index: number) => void | Promise<void>
 ): Promise<void> {
-  return new Promise(async resolve => {
-    for (let i = 0; i < times; i++) {
-      await fn(i)
-      if (i < times - 1) await new Promise(r => setTimeout(r, ms))
-    }
-    resolve()
-  })
+  for (let i = 0; i < times; i++) {
+    await fn(i)
+    if (i < times - 1) await new Promise(r => setTimeout(r, ms))
+  }
 }

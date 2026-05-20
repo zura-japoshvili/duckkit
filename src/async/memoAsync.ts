@@ -9,6 +9,7 @@
  * (class instances, functions, circular objects).
  *
  * @param fn - The async function to memoize
+ * @param options.maxSize - Max number of cached entries. When exceeded, the oldest entry is evicted (FIFO).
  * @returns A memoized async function with the same signature
  *
  * @example
@@ -21,11 +22,17 @@
  * // concurrent calls share one request
  * await Promise.all([getUser('123'), getUser('123')])
  * // fetchUser called only once ✅
+ *
+ * @example
+ * // Bounded cache — safe for long-running apps
+ * const getUser = memoAsync(fetchUser, { maxSize: 200 })
  */
 export function memoAsync<Args extends unknown[], R>(
-  fn: (...args: Args) => Promise<R>
+  fn: (...args: Args) => Promise<R>,
+  options?: { maxSize?: number }
 ): (...args: Args) => Promise<R> {
   const cache = new Map<string, Promise<R>>()
+  const maxSize = options?.maxSize
 
   return (...args: Args): Promise<R> => {
     const key = JSON.stringify(args)
@@ -37,6 +44,11 @@ export function memoAsync<Args extends unknown[], R>(
     })
 
     cache.set(key, promise)
+
+    if (maxSize && cache.size > maxSize) {
+      cache.delete(cache.keys().next().value!)
+    }
+
     return promise
   }
 }

@@ -130,34 +130,13 @@ await repeat(3, 500, i => console.log(`tick ${i}`))
 No delay is added after the last call — only between calls. `times = 0` never calls the function and resolves immediately.
 
 ```typescript
-// async callbacks are supported
+// async callbacks are supported — errors propagate normally
 await repeat(3, 1000, async i => {
   const data = await fetchPage(i)
   process(data)
 })
 
-// retry pattern
-await repeat(3, 2000, async () => {
-  await syncWithServer()
+// if fn throws, the error rejects the promise and remaining iterations are skipped
+await repeat(3, 500, async () => {
+  await syncWithServer()  // throws → repeat rejects immediately ✅
 })
-```
-
-> **Errors in `fn` are silently swallowed — the promise hangs forever:** `repeat` uses the `new Promise(async resolve => {...})` pattern, which is an anti-pattern. If `fn` throws or rejects, the error is caught by the async executor but the outer promise never rejects and never resolves. It just hangs.
->
-> ```typescript
-> await repeat(3, 500, async () => {
->   throw new Error('failed')  // swallowed — promise hangs forever ❌
-> })
-> ```
->
-> Until this is fixed in the source, wrap your callback in a try/catch and handle errors inside it:
->
-> ```typescript
-> await repeat(3, 500, async i => {
->   try {
->     await riskyOperation(i)
->   } catch (e) {
->     console.error('iteration failed:', e)
->   }
-> })
-> ```

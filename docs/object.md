@@ -70,21 +70,19 @@ deepMerge({ tags: [1, 2] }, { tags: [3] })
 // { tags: [3] } — not [1, 2, 3]
 ```
 
+`Date` values are preserved correctly — they are treated as leaf values, not plain objects:
+
+```typescript
+deepMerge({ createdAt: new Date('2026-01-01') }, { updatedAt: new Date('2026-05-20') })
+// { createdAt: Date, updatedAt: Date } ✅
+```
+
 If `override` has a primitive where `base` has an object, the primitive wins:
 
 ```typescript
 deepMerge({ a: { b: 1 } }, { a: 42 })
 // { a: 42 }
 ```
-
-> **`Date` values are destroyed:** `isPlainObject` returns `true` for `Date` instances, so dates in either argument are recursed into as plain objects. `Object.keys(new Date())` returns `[]`, leaving an empty object in place of the date.
->
-> ```typescript
-> deepMerge({ createdAt: new Date() }, { createdAt: new Date() })
-> // { createdAt: {} } ❌ — date is gone
-> ```
->
-> If your objects contain `Date` values, clone or reassign them manually after merging, or use `structuredClone()` for the whole thing.
 
 > **`undefined` in override silently clears base values:** Keys present in `override` with value `undefined` overwrite whatever was in `base`.
 >

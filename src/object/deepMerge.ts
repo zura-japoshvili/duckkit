@@ -20,6 +20,11 @@
  * // Arrays are replaced, not merged
  * deepMerge({ tags: [1, 2] }, { tags: [3] })
  * // { tags: [3] }
+ *
+ * @example
+ * // Date values are preserved correctly
+ * deepMerge({ createdAt: new Date('2026-01-01') }, { updatedAt: new Date('2026-05-20') })
+ * // { createdAt: Date, updatedAt: Date } ✅
  */
 type DeepMerge<T, U> = {
   [K in keyof T | keyof U]: K extends keyof U
@@ -36,7 +41,12 @@ type DeepMerge<T, U> = {
 }
 
 function isPlainObject(val: unknown): val is Record<string, unknown> {
-  return typeof val === 'object' && val !== null && !Array.isArray(val)
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    !Array.isArray(val) &&
+    !(val instanceof Date)
+  )
 }
 
 export function deepMerge<T extends object, U extends object>(
