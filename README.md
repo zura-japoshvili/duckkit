@@ -8,10 +8,9 @@
 
 TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed.
 
-Covers array, object, string, number, date, async, and delay utilities. Each function is properly typed — no any, no Record<string, unknown> workarounds. Import everything or per category, only what you use ends up in the bundle.
+Covers array, object, string, number, date, async, delay, emitter, and function composition utilities. Each function is properly typed — no any, no Record<string, unknown> workarounds. Import everything or per category, only what you use ends up in the bundle.
 
-Includes things native JS still doesn't have — typed groupBy, partition, deepClone that preserves Date objects, safe/safeAsync for try/catch-free error handling, delaySkippable for cancellable waits, and more. Built to cover the helpers you keep writing from scratch in every project.
-
+Includes things native JS still doesn't have — typed groupBy, partition, deepClone that preserves Date objects, safe/safeAsync for try/catch-free error handling, delaySkippable for cancellable waits, a fully typed event emitter, and more. Built to cover the helpers you keep writing from scratch in every project.
 
 ---
 
@@ -37,6 +36,8 @@ import { pick, omit, deepMerge, deepClone, flattenObject } from 'duckkit/object'
 import { clamp, lerp, roundTo, average, toOrdinal, formatBytes } from 'duckkit/number'
 import { slugify, camelCase, escapeHtml, template, mask, excerpt } from 'duckkit/string'
 import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
+import { createEmitter } from 'duckkit/emitter'
+import { pipeline, compose, pipelineAsync, composeAsync, curry } from 'duckkit/fn'
 ```
 
 ---
@@ -66,7 +67,7 @@ compact([1, null, 2, undefined, 3])  // [1, 2, 3] — type narrowed ✅
 pick(user, ['name', 'email'])   // removes password from type ✅
 omit(user, ['password'])        // .password is now a compile error ✅
 
-deepMerge(defaults, overrides)  // nested objects merged, not replaced
+deepMerge(defaults, overrides)  // nested objects merged, not replaced — Date values preserved ✅
 ```
 
 → [Full object docs](docs/object.md)
@@ -83,6 +84,9 @@ if (result.ok) console.log(result.value)  // typed ✅
 
 await retry(() => fetchUser(id), 3, 1000)       // 3 attempts, 1s between
 await parallel([fetchA, fetchB, fetchC], { concurrency: 2 })
+
+// bounded cache — safe for long-running apps
+const getUser = memoAsync(fetchUser, { maxSize: 100 })
 ```
 
 → [Full async docs](docs/async.md)
@@ -123,10 +127,10 @@ formatBytes(1048576)           // "1 MB"
 `capitalize` `truncate` `slugify` `excerpt` `camelCase` `snakeCase` `kebabCase` `pascalCase` `titleCase` `isEmpty` `randomId` `countOccurrences` `escapeHtml` `unescapeHtml` `template` `words` `mask` `stripHtml`
 
 ```typescript
-slugify('Hello World!')                    // "hello-world"
-mask('4242424242424242')                   // "************4242"
+slugify('Hello World!')                      // "hello-world"
+mask('4242424242424242')                     // "************4242"
 template('Hello {name}!', { name: 'Zura' }) // "Hello Zura!"
-escapeHtml('<script>alert("xss")</script>') // safe ✅
+escapeHtml('<script>alert("xss")</script>')  // safe ✅
 ```
 
 → [Full string docs](docs/string.md)
@@ -144,6 +148,77 @@ await repeat(3, 500, i => console.log(`tick ${i}`))
 ```
 
 → [Full delay docs](docs/delay.md)
+
+---
+
+## Emitter
+
+`createEmitter`
+
+A fully typed event emitter. Define your event map once — TypeScript enforces correct payload types on every `emit` and `on` call. Use `void` for events with no payload.
+
+```typescript
+const emitter = createEmitter<{
+  win: number
+  spin: void
+  error: { code: number; message: string }
+}>()
+
+emitter.on('win', amount => console.log(amount))  // amount: number ✅
+emitter.emit('win', 500)
+emitter.emit('spin')                              // no payload needed ✅
+emitter.emit('win', 'oops')                       // TypeScript error ❌
+
+// unsubscribe
+const off = emitter.on('win', handler)
+off()
+
+// fire once, then auto-unsubscribe
+emitter.once('win', amount => showBigWin(amount))
+```
+
+→ [Full emitter docs](docs/emitter.md)
+
+---
+
+## Fn
+
+`pipeline` `compose` `pipelineAsync` `composeAsync` `curry`
+
+Function composition utilities. `pipeline` and `compose` return reusable typed functions — unlike `pipe` which threads a single value. All overloaded up to 5 steps with full type inference.
+
+```typescript
+// pipeline — left to right, returns a reusable function
+const process = pipeline(
+  (s: string) => s.trim(),
+  s => s.toUpperCase(),
+  s => s.split(' '),
+)
+process('  hello world  ')  // ["HELLO", "WORLD"] ✅ — reusable
+
+// compose — right to left
+const process = compose(
+  (arr: string[]) => arr.join('-'),
+  (s: string) => s.split(' '),
+  (s: string) => s.toUpperCase(),
+)
+process('hello world')  // "HELLO-WORLD"
+
+// async steps supported
+const processUser = pipelineAsync(
+  (id: string) => fetchUser(id),    // async
+  user => normalizeUser(user),      // sync — works too
+  user => saveToCache(user),        // async
+)
+const user = await processUser('abc123')  // fully typed ✅
+
+// curry — partial application with full type inference
+const multiply = curry((factor: number, value: number) => value * factor)
+[1, 2, 3].map(multiply(2))   // [2, 4, 6] ✅
+[1, 2, 3].map(multiply(10))  // [10, 20, 30] ✅
+```
+
+→ [Full fn docs](docs/fn.md)
 
 ---
 

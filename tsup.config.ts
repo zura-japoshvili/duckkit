@@ -10,6 +10,8 @@ export default defineConfig({
     'string/index': 'src/string/index.ts',
     'number/index': 'src/number/index.ts',
     'delay/index': 'src/delay/index.ts',
+    'fn/index': 'src/fn/index.ts',
+    'emitter/index': 'src/emitter/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

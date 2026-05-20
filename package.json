@@ -95,10 +95,15 @@
       "import": "./dist/delay/index.js",
       "require": "./dist/delay/index.cjs"
     },
-    "./validate": {
-      "types": "./dist/validate/index.d.ts",
-      "import": "./dist/validate/index.js",
-      "require": "./dist/validate/index.cjs"
+    "./fn": {
+      "types": "./dist/fn/index.d.ts",
+      "import": "./dist/fn/index.js",
+      "require": "./dist/fn/index.cjs"
+    },
+    "./emitter": {
+      "types": "./dist/emitter/index.d.ts",
+      "import": "./dist/emitter/index.js",
+      "require": "./dist/emitter/index.cjs"
     }
   },
   "files": [
