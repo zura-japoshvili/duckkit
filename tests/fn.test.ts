@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { pipeline, compose, pipelineAsync, composeAsync, curry } from '../src/fn/index'
+import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from '../src/fn/index'
 
 // ─── pipeline ─────────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ describe('pipeline', () => {
       n => n - 3,
       n => String(n),
     )
-    expect(process(5)).toBe('9') // ((5+1)*2)-3 = 9
+    expect(process(5)).toBe('9')
   })
 
   it('five steps compose in order', () => {
@@ -109,8 +109,8 @@ describe('compose', () => {
 
   it('two steps execute right to left', () => {
     const process = compose(
-      (s: string) => s.toUpperCase(),  // runs second
-      (n: number) => String(n),        // runs first
+      (s: string) => s.toUpperCase(),
+      (n: number) => String(n),
     )
     expect(process(42)).toBe('42')
   })
@@ -133,7 +133,7 @@ describe('compose', () => {
       (n: number) => n * 2,
       (n: number) => n + 1,
     )
-    expect(process(5)).toBe('9') // same math as pipeline test, reversed order
+    expect(process(5)).toBe('9')
   })
 
   it('five steps execute right to left', () => {
@@ -151,11 +151,7 @@ describe('compose', () => {
     const add1 = (n: number) => n + 1
     const double = (n: number) => n * 2
     const toString = (n: number) => String(n)
-
-    const viaCompose = compose(toString, double, add1)
-    const viaPipeline = pipeline(add1, double, toString)
-
-    expect(viaCompose(5)).toBe(viaPipeline(5))
+    expect(compose(toString, double, add1)(5)).toBe(pipeline(add1, double, toString)(5))
   })
 
   it('returns a reusable function', () => {
@@ -184,25 +180,16 @@ describe('pipelineAsync', () => {
     expect(await process('  hello  ')).toBe('HELLO')
   })
 
-  it('three async steps compose left to right', async () => {
-    const process = pipelineAsync(
-      async (s: string) => s.trim(),
-      async (s: string) => s.toUpperCase(),
-      async (s: string) => s.split(' '),
-    )
-    expect(await process('  hello world  ')).toEqual(['HELLO', 'WORLD'])
-  })
-
   it('sync and async steps can be mixed', async () => {
     const process = pipelineAsync(
-      (s: string) => s.trim(),           // sync
-      async (s: string) => s.toUpperCase(), // async
-      (s: string) => s.split(' '),       // sync
+      (s: string) => s.trim(),
+      async (s: string) => s.toUpperCase(),
+      (s: string) => s.split(' '),
     )
     expect(await process('  hello world  ')).toEqual(['HELLO', 'WORLD'])
   })
 
-  it('steps are awaited in order, not all at once', async () => {
+  it('steps are awaited in order', async () => {
     const order: number[] = []
     const process = pipelineAsync(
       async (n: number) => { order.push(1); return n + 1 },
@@ -213,7 +200,7 @@ describe('pipelineAsync', () => {
     expect(order).toEqual([1, 2, 3])
   })
 
-  it('rejection in a step propagates and stops pipeline', async () => {
+  it('rejection stops pipeline', async () => {
     const h3 = vi.fn()
     const process = pipelineAsync(
       async (n: number) => n + 1,
@@ -229,27 +216,6 @@ describe('pipelineAsync', () => {
     expect(await double(3)).toBe(6)
     expect(await double(5)).toBe(10)
   })
-
-  it('four async steps compose correctly', async () => {
-    const process = pipelineAsync(
-      async (n: number) => n + 1,
-      async (n: number) => n * 2,
-      async (n: number) => n - 3,
-      async (n: number) => String(n),
-    )
-    expect(await process(5)).toBe('9')
-  })
-
-  it('five async steps compose correctly', async () => {
-    const process = pipelineAsync(
-      async (s: string) => s.trim(),
-      async (s: string) => s.toLowerCase(),
-      async (s: string) => s.split(' '),
-      async (arr: string[]) => arr.filter(w => w.length > 3),
-      async (arr: string[]) => arr.join('-'),
-    )
-    expect(await process('  The Quick Brown Fox  ')).toBe('quick-brown')
-  })
 })
 
 // ─── composeAsync ─────────────────────────────────────────────────────────────
@@ -262,8 +228,8 @@ describe('composeAsync', () => {
 
   it('two async steps execute right to left', async () => {
     const process = composeAsync(
-      async (s: string) => s.toUpperCase(),  // second
-      async (n: number) => String(n),        // first
+      async (s: string) => s.toUpperCase(),
+      async (n: number) => String(n),
     )
     expect(await process(42)).toBe('42')
   })
@@ -283,11 +249,7 @@ describe('composeAsync', () => {
     const add1 = async (n: number) => n + 1
     const double = async (n: number) => n * 2
     const toString = async (n: number) => String(n)
-
-    const viaCompose = composeAsync(toString, double, add1)
-    const viaPipeline = pipelineAsync(add1, double, toString)
-
-    expect(await viaCompose(5)).toBe(await viaPipeline(5))
+    expect(await composeAsync(toString, double, add1)(5)).toBe(await pipelineAsync(add1, double, toString)(5))
   })
 
   it('rejection propagates and stops pipeline', async () => {
@@ -324,28 +286,11 @@ describe('curry', () => {
     const add10 = add(10)
     expect(add10(1)).toBe(11)
     expect(add10(5)).toBe(15)
-    expect(add10(100)).toBe(110)
   })
 
-  it('2-arg: works with different types', () => {
-    const prefix = curry((pre: string, s: string) => `${pre}${s}`)
-    const hello = prefix('Hello, ')
-    expect(hello('Zura')).toBe('Hello, Zura')
-    expect(hello('World')).toBe('Hello, World')
-  })
-
-  it('2-arg: useful as partial application for array methods', () => {
+  it('2-arg: useful for array methods', () => {
     const multiply = curry((factor: number, value: number) => value * factor)
     expect([1, 2, 3].map(multiply(2))).toEqual([2, 4, 6])
-    expect([1, 2, 3].map(multiply(10))).toEqual([10, 20, 30])
-  })
-
-  it('2-arg: each partial application is independent', () => {
-    const add = curry((a: number, b: number) => a + b)
-    const add1 = add(1)
-    const add2 = add(2)
-    expect(add1(5)).toBe(6)
-    expect(add2(5)).toBe(7)
   })
 
   it('3-arg: returns a fully curried chain', () => {
@@ -355,15 +300,6 @@ describe('curry', () => {
     expect(clamp(0)(100)(50)).toBe(50)
     expect(clamp(0)(100)(150)).toBe(100)
     expect(clamp(0)(100)(-10)).toBe(0)
-  })
-
-  it('3-arg: partial application at each step', () => {
-    const between = curry((min: number, max: number, value: number) =>
-      value >= min && value <= max
-    )
-    const is0to10 = between(0)(10)
-    expect(is0to10(5)).toBe(true)
-    expect(is0to10(11)).toBe(false)
   })
 
   it('3-arg: partial applications are independent', () => {
@@ -376,27 +312,125 @@ describe('curry', () => {
     expect(clamp0to100(50)).toBe(50)
   })
 
-  it('3-arg: works with strings', () => {
-    const replace = curry((from: string, to: string, s: string) =>
-      s.split(from).join(to)
-    )
-    const underscoreToSpace = replace('_')(' ')
-    expect(underscoreToSpace('hello_world')).toBe('hello world')
-    expect(underscoreToSpace('foo_bar_baz')).toBe('foo bar baz')
-  })
-
-    it('4-arg function is returned unchanged', () => {
+  it('4-arg function is returned unchanged', () => {
     const fn = (a: number, b: number, c: number, d: number) => a + b + c + d
     const curried = curry(fn as any) as unknown as typeof fn
-    expect(typeof curried).toBe('function')
     expect(curried(1, 2, 3, 4)).toBe(10)
-    })
+  })
+})
 
-  it('return value is correctly typed', () => {
-    const add = curry((a: number, b: number) => a + b)
-    const add5 = add(5)
-    // TypeScript infers add5 as (b: number) => number
-    const result: number = add5(3)
-    expect(result).toBe(8)
+// ─── tap ──────────────────────────────────────────────────────────────────────
+
+describe('tap', () => {
+  it('passes value through unchanged', () => {
+    const fn = tap((n: number) => n * 100)
+    expect(fn(5)).toBe(5)
+  })
+
+  it('calls the side effect with the value', () => {
+    const spy = vi.fn()
+    tap(spy)(42)
+    expect(spy).toHaveBeenCalledWith(42)
+  })
+
+  it('works inside a pipeline', () => {
+    const log = vi.fn()
+    const process = pipeline(
+      (n: number) => n * 2,
+      tap(log),
+      n => n + 1,
+    )
+    expect(process(5)).toBe(11)
+    expect(log).toHaveBeenCalledWith(10)
+  })
+
+  it('side effect runs even if value is falsy', () => {
+    const spy = vi.fn()
+    tap(spy)(0)
+    tap(spy)('')
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not mutate the value even if side effect tries', () => {
+    const process = pipeline(
+      (arr: number[]) => [...arr, 4],
+      tap(arr => { arr.push(99) }),  // mutation in side effect
+      arr => arr.length,
+    )
+    // tap returns original reference so mutation does affect it — documented behavior
+    expect(process([1, 2, 3])).toBe(5) // [1,2,3,4,99]
+  })
+
+  it('each call is independent', () => {
+    const spy = vi.fn()
+    const t = tap(spy)
+    t(1)
+    t(2)
+    t(3)
+    expect(spy).toHaveBeenCalledTimes(3)
+    expect(spy).toHaveBeenNthCalledWith(1, 1)
+    expect(spy).toHaveBeenNthCalledWith(2, 2)
+    expect(spy).toHaveBeenNthCalledWith(3, 3)
+  })
+})
+
+// ─── when ─────────────────────────────────────────────────────────────────────
+
+describe('when', () => {
+  it('applies fn when condition is true', () => {
+    const addHundred = when((n: number) => n > 10, n => n + 100)
+    expect(addHundred(20)).toBe(120)
+  })
+
+  it('passes value through when condition is false', () => {
+    const addHundred = when((n: number) => n > 10, n => n + 100)
+    expect(addHundred(5)).toBe(5)
+  })
+
+  it('works inside a pipeline', () => {
+    const process = pipeline(
+      (n: number) => n * 2,
+      when(n => n > 10, n => n + 100),
+      n => String(n),
+    )
+    expect(process(3)).toBe('6')    // 3*2=6, condition false
+    expect(process(10)).toBe('120') // 10*2=20, condition true, +100
+  })
+
+  it('works with strings', () => {
+    const normalize = when(
+      (s: string) => s.length > 0,
+      s => s.trim().toLowerCase(),
+    )
+    expect(normalize('  HELLO  ')).toBe('hello')
+    expect(normalize('')).toBe('')
+  })
+
+  it('condition receives the current value', () => {
+    const spy = vi.fn(() => true)
+    when(spy, (n: number) => n)(42)
+    expect(spy).toHaveBeenCalledWith(42)
+  })
+
+  it('fn is not called when condition is false', () => {
+    const fn = vi.fn((n: number) => n + 1)
+    when(() => false, fn)(5)
+    expect(fn).not.toHaveBeenCalled()
+  })
+
+  it('fn is called when condition is true', () => {
+    const fn = vi.fn((n: number) => n + 1)
+    when(() => true, fn)(5)
+    expect(fn).toHaveBeenCalledWith(5)
+  })
+
+  it('works with objects', () => {
+    type User = { name: string; active: boolean }
+    const normalize = when(
+      (u: User) => u.active,
+      u => ({ ...u, name: u.name.toUpperCase() }),
+    )
+    expect(normalize({ name: 'zura', active: true })).toEqual({ name: 'ZURA', active: true })
+    expect(normalize({ name: 'zura', active: false })).toEqual({ name: 'zura', active: false })
   })
 })

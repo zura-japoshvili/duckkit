@@ -33,11 +33,11 @@ import { groupBy, partition, sortBy, chunk } from 'duckkit/array'
 import { safe, safeAsync, pipe, retry, timeout, once, defer } from 'duckkit/async'
 import { formatDate, timeAgo, addDays, startOfDay, isSameDay } from 'duckkit/date'
 import { pick, omit, deepMerge, deepClone, flattenObject } from 'duckkit/object'
-import { clamp, lerp, roundTo, average, toOrdinal, formatBytes } from 'duckkit/number'
+import { clamp, lerp, roundTo, average, toOrdinal, formatBytes, formatDuration } from 'duckkit/number'
 import { slugify, camelCase, escapeHtml, template, mask, excerpt } from 'duckkit/string'
 import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
 import { createEmitter } from 'duckkit/emitter'
-import { pipeline, compose, pipelineAsync, composeAsync, curry } from 'duckkit/fn'
+import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from 'duckkit/fn'
 ```
 
 ---
@@ -109,13 +109,14 @@ addDays(new Date(), 30)                      // deadline in 30 days
 
 ## Number
 
-`clamp` `lerp` `roundTo` `truncateTo` `randomInt` `inRange` `average` `normalize` `toOrdinal` `toRoman` `formatNumber` `formatBytes`
+`clamp` `lerp` `roundTo` `truncateTo` `randomInt` `inRange` `average` `normalize` `toOrdinal` `toRoman` `formatNumber` `formatBytes` `formatDuration`
 
 ```typescript
 clamp(userInput, 0, 1)         // safe opacity value
 lerp(position, target, 0.1)    // smooth animation step
 toOrdinal(21)                  // "21st"
 formatBytes(1048576)           // "1 MB"
+formatDuration(3661)           // "1h 1m 1s"
 ```
 
 → [Full number docs](docs/number.md)
@@ -169,11 +170,9 @@ emitter.emit('win', 500)
 emitter.emit('spin')                              // no payload needed ✅
 emitter.emit('win', 'oops')                       // TypeScript error ❌
 
-// unsubscribe
 const off = emitter.on('win', handler)
 off()
 
-// fire once, then auto-unsubscribe
 emitter.once('win', amount => showBigWin(amount))
 ```
 
@@ -183,7 +182,7 @@ emitter.once('win', amount => showBigWin(amount))
 
 ## Fn
 
-`pipeline` `compose` `pipelineAsync` `composeAsync` `curry`
+`pipeline` `compose` `pipelineAsync` `composeAsync` `curry` `tap` `when`
 
 Function composition utilities. `pipeline` and `compose` return reusable typed functions — unlike `pipe` which threads a single value. All overloaded up to 5 steps with full type inference.
 
@@ -196,26 +195,33 @@ const process = pipeline(
 )
 process('  hello world  ')  // ["HELLO", "WORLD"] ✅ — reusable
 
-// compose — right to left
-const process = compose(
-  (arr: string[]) => arr.join('-'),
-  (s: string) => s.split(' '),
-  (s: string) => s.toUpperCase(),
+// tap — side effect without changing the value
+const process = pipeline(
+  (s: string) => s.trim(),
+  tap(s => console.log('after trim:', s)),  // logs, passes value through ✅
+  s => s.toUpperCase(),
 )
-process('hello world')  // "HELLO-WORLD"
+
+// when — conditionally apply a function
+const process = pipeline(
+  (n: number) => n * 2,
+  when(n => n > 10, n => n + 100),  // only runs if n > 10
+  n => String(n),
+)
+process(3)   // "6"   — condition false, skipped
+process(10)  // "120" — condition true, applied
 
 // async steps supported
 const processUser = pipelineAsync(
-  (id: string) => fetchUser(id),    // async
-  user => normalizeUser(user),      // sync — works too
-  user => saveToCache(user),        // async
+  (id: string) => fetchUser(id),
+  user => normalizeUser(user),
+  user => saveToCache(user),
 )
 const user = await processUser('abc123')  // fully typed ✅
 
-// curry — partial application with full type inference
+// curry — partial application
 const multiply = curry((factor: number, value: number) => value * factor)
 [1, 2, 3].map(multiply(2))   // [2, 4, 6] ✅
-[1, 2, 3].map(multiply(10))  // [10, 20, 30] ✅
 ```
 
 → [Full fn docs](docs/fn.md)

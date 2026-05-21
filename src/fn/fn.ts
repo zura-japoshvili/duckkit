@@ -5,6 +5,8 @@
  * - `compose`  — right to left (f3 ← f2 ← f1), traditional math/FP style
  * - `pipelineAsync` / `composeAsync` — same but each step can be async
  * - `curry`    — converts a multi-arg function into a chain of single-arg functions
+ * - `tap`      — run a side effect in a pipeline without changing the value
+ * - `when`     — conditionally apply a function, pass through otherwise
  *
  * All are fully typed with overloads up to 5 steps. TypeScript infers each
  * intermediate type — no `any` in the chain.
@@ -26,16 +28,6 @@
  * )
  * process('  hello world  ')  // ["HELLO", "WORLD"] ✅
  * process('  foo bar  ')      // ["FOO", "BAR"] ✅ — reusable
- *
- * @example
- * // Compose validators
- * const validate = pipeline(
- *   (n: number) => Math.max(0, n),   // clamp negatives
- *   n => Math.min(n, 100),           // clamp to 100
- *   n => Math.round(n),              // round to int
- * )
- * validate(-5)   // 0
- * validate(99.7) // 100
  */
 export function pipeline<A, B>(
   f1: (a: A) => B
@@ -79,7 +71,6 @@ export function pipeline(...fns: Function[]): Function {
  *   (s: string) => s.toUpperCase(),
  * )
  * process('hello world')  // "HELLO-WORLD"
- * // execution order: toUpperCase → split → join
  */
 export function compose<A, B>(
   f1: (a: A) => B
@@ -118,11 +109,10 @@ export function compose(...fns: Function[]): Function {
  *
  * @example
  * const processUser = pipelineAsync(
- *   (id: string) => fetchUser(id),           // async
- *   user => normalizeUser(user),             // sync
- *   user => saveToCache(user),               // async
+ *   (id: string) => fetchUser(id),
+ *   user => normalizeUser(user),
+ *   user => saveToCache(user),
  * )
- *
  * const user = await processUser('abc123')  // fully typed ✅
  */
 export function pipelineAsync<A, B>(
@@ -165,9 +155,9 @@ export function pipelineAsync(...fns: Function[]): (input: unknown) => Promise<u
  *
  * @example
  * const process = composeAsync(
- *   (user: User) => saveToCache(user),   // async, runs last
- *   (user: User) => normalizeUser(user), // sync
- *   (id: string) => fetchUser(id),       // async, runs first
+ *   (user: User) => saveToCache(user),
+ *   (user: User) => normalizeUser(user),
+ *   (id: string) => fetchUser(id),
  * )
  * await process('abc123')
  */
@@ -208,28 +198,18 @@ export function composeAsync(...fns: Function[]): (input: unknown) => Promise<un
 
 /**
  * Converts a multi-argument function into a chain of single-argument functions.
- *
- * Supports 2- and 3-argument functions. TypeScript infers all argument and
- * return types automatically.
+ * Supports 2- and 3-argument functions.
  *
  * @example
- * // 2-arg
- * const add = curry((a: number, b: number) => a + b)
- * const add5 = add(5)     // (b: number) => number
- * add5(3)                 // 8
- * add5(10)                // 15
- *
- * @example
- * // 3-arg
- * const clamp = curry((min: number, max: number, value: number) => Math.min(Math.max(value, min), max))
- * const clamp0to100 = clamp(0)(100)   // (value: number) => number
- * clamp0to100(150)                    // 100
- * clamp0to100(-5)                     // 0
- *
- * @example
- * // Partial application for array methods
  * const multiply = curry((factor: number, value: number) => value * factor)
  * [1, 2, 3].map(multiply(2))  // [2, 4, 6] ✅
+ *
+ * @example
+ * const clamp = curry((min: number, max: number, value: number) =>
+ *   Math.min(Math.max(value, min), max)
+ * )
+ * const clamp0to100 = clamp(0)(100)
+ * clamp0to100(150)  // 100
  */
 export function curry<A, B, R>(
   fn: (a: A, b: B) => R
@@ -241,4 +221,59 @@ export function curry(fn: Function): Function {
   if (fn.length === 2) return (a: unknown) => (b: unknown) => fn(a, b)
   if (fn.length === 3) return (a: unknown) => (b: unknown) => (c: unknown) => fn(a, b, c)
   return fn
+}
+
+// ─── tap ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Runs a side effect on the value and passes it through unchanged.
+ * Useful for debugging inside pipelines without breaking the chain.
+ *
+ * @example
+ * const process = pipeline(
+ *   (s: string) => s.trim(),
+ *   tap(s => console.log('after trim:', s)),  // logs, value unchanged ✅
+ *   s => s.toUpperCase(),
+ * )
+ *
+ * @example
+ * // log intermediate values while debugging
+ * pipeline(
+ *   fetchUser,
+ *   tap(user => console.log('fetched:', user)),
+ *   normalizeUser,
+ *   tap(user => console.log('normalized:', user)),
+ *   saveToCache,
+ * )
+ */
+export function tap<T>(fn: (value: T) => void): (value: T) => T {
+  return (value: T) => {
+    fn(value)
+    return value
+  }
+}
+
+// ─── when ────────────────────────────────────────────────────────────────────
+
+/**
+ * Conditionally applies a function. If the predicate returns true, applies `fn`
+ * and returns the result. Otherwise returns the value unchanged.
+ *
+ * @example
+ * const process = pipeline(
+ *   (n: number) => n * 2,
+ *   when(n => n > 10, n => n + 100),  // only adds 100 if n > 10
+ *   n => String(n),
+ * )
+ * process(3)   // "6"   — condition false, skipped
+ * process(10)  // "120" — condition true, +100 applied
+ *
+ * @example
+ * // normalize only non-empty strings
+ * const clean = pipeline(
+ *   when((s: string) => s.length > 0, s => s.trim().toLowerCase()),
+ * )
+ */
+export function when<T>(predicate: (value: T) => boolean, fn: (value: T) => T): (value: T) => T {
+  return (value: T) => predicate(value) ? fn(value) : value
 }
