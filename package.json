@@ -1,6 +1,6 @@
 {
   "name": "duckkit",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed. Typed groupBy, safe/Result type, pipe, pipeline, compose, curry, typed event emitter, and more.",
   "author": "Zura Japoshvili",
   "license": "MIT",
@@ -49,7 +49,19 @@
     "timeAgo",
     "formatDate",
     "formatBytes",
-    "pipeline", "compose", "curry", "partial-application", "function-composition", "memoize", "defer", "parallel", "sequential", "event-emitter", "emitter", "typed-events", "pubsub"
+    "pipeline",
+    "compose",
+    "curry",
+    "partial-application",
+    "function-composition",
+    "memoize",
+    "defer",
+    "parallel",
+    "sequential",
+    "event-emitter",
+    "emitter",
+    "typed-events",
+    "pubsub"
   ],
   "type": "module",
   "main": "./dist/index.cjs",
