@@ -1,4 +1,4 @@
-# duckkit
+# duckkit 🦆
 
 [![npm version](https://img.shields.io/npm/v/duckkit.svg)](https://www.npmjs.com/package/duckkit)
 [![npm downloads](https://img.shields.io/npm/dm/duckkit.svg)](https://www.npmjs.com/package/duckkit)
@@ -8,9 +8,24 @@
 
 TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed.
 
-Covers array, object, string, number, date, async, delay, emitter, and function composition utilities. Each function is properly typed — no any, no Record<string, unknown> workarounds. Import everything or per category, only what you use ends up in the bundle.
+Covers array, object, string, number, date, async, delay, emitter, and function composition utilities. Each function is properly typed — no `any`, no `Record<string, unknown>` workarounds. Import everything or per category, only what you use ends up in the bundle.
 
-Includes things native JS still doesn't have — typed groupBy, partition, deepClone that preserves Date objects, safe/safeAsync for try/catch-free error handling, delaySkippable for cancellable waits, a fully typed event emitter, and more. Built to cover the helpers you keep writing from scratch in every project.
+---
+
+## Overview
+
+A comprehensive TypeScript utility library that provides:
+
+- **Zero Dependencies** — lightweight and self-contained, nothing pulled in
+- **Tree-Shakeable** — import per category, only what you use ends up in the bundle
+- **Fully Typed** — no `any`, no `Record<string, unknown>` workarounds, proper generics throughout
+- **ESM + CJS** — works in Node.js, browsers, and bundlers
+- **Typed `groupBy`** — returns `Record<K, T[]>`, not `Dictionary<any>`
+- **`deepClone` that preserves Dates** — unlike the `JSON.parse(JSON.stringify(...))` trick
+- **`safe` / Result type** — try/catch as a typed value, no untyped throws
+- **`delaySkippable`** — cancellable async wait, unique to duckkit
+- **Typed event emitter** — payload types enforced at compile time
+- **Function composition** — `pipeline`, `compose`, `curry`, `tap`, `when` with full type inference
 
 ---
 
@@ -18,6 +33,137 @@ Includes things native JS still doesn't have — typed groupBy, partition, deepC
 
 ```bash
 npm install duckkit
+```
+
+---
+
+## Key Features
+
+### Array Utilities
+- Typed `groupBy` — returns `Record<K, T[]>`, not `any`
+- `partition`, `topBy`, `minBy`, `maxBy`, `chunk`, `compact`, `unique`
+- `shuffle`, `flatten`, `range`, `zip`, `without`, `union`, `intersection`, `difference`
+- `countBy`, `keyBy`, `sum`, `sumBy`, `sample`
+
+### Object Utilities
+- `deepClone` — preserves `Date` objects, unlike `JSON.parse(JSON.stringify(...))`
+- `deepMerge` — nested merge with Date support, non-mutating
+- `pick`, `omit` — removed keys disappear from the TypeScript type entirely
+- `flattenObject`, `unflattenObject`, `invertObject`
+- `mapKeys`, `mapValues`, `filterKeys`, `filterValues`
+- Typed `keys`, `values`, `entries`, `fromEntries`
+
+### Async & Error Handling
+- `safe` / `safeAsync` — try/catch as a typed `Result` value
+- `retry` with optional exponential backoff
+- `memo` / `memoAsync` with `maxSize` cache eviction
+- `debounce`, `throttle`, `once`, `defer`
+- `parallel` with concurrency limit, `sequential`
+- `timeout` — races a promise against a timer
+
+### Date Utilities
+- `timeAgo` — human-readable relative time ("3 minutes ago")
+- `formatDate` — token-based formatting (`MMM D, YYYY`, `HH:mm:ss`)
+- `addDays`, `addMonths`, `addYears`, `subDays`, `daysBetween`
+- `startOfDay`, `endOfDay`, `startOfWeek`, `startOfMonth`
+- `isSameDay`, `isBefore`, `isAfter`
+- `isToday`, `isYesterday`, `isWeekend`, `isThisWeek`, `isThisYear`
+
+### Number Utilities
+- `clamp`, `lerp`, `normalize` — common math for animations and game dev
+- `roundTo`, `truncateTo` — decimal precision without floating-point surprises
+- `formatBytes` — `1048576` → `"1 MB"`
+- `formatDuration` — `3661` → `"1h 1m 1s"`
+- `toOrdinal` — `21` → `"21st"`
+- `toRoman`, `formatNumber`, `randomInt`, `inRange`, `average`
+
+### String Utilities
+- Case conversion: `camelCase`, `snakeCase`, `kebabCase`, `pascalCase`, `titleCase`
+- `slugify` — URL-safe slug generation
+- `mask` — `"4242424242424242"` → `"************4242"`
+- `escapeHtml` / `unescapeHtml` — XSS-safe HTML encoding
+- `template` — `"Hello {name}!"` interpolation
+- `truncate`, `excerpt` — cut at character or word boundary
+- `randomId` — cryptographically secure via `crypto.getRandomValues`
+- `stripHtml`, `words`, `isEmpty`, `countOccurrences`
+
+### Delay Utilities
+- `delay` — simple `await delay(1000)`
+- `delaySkippable` — resolves early if a condition becomes true (unique to duckkit)
+- `delayWithAbort` — native `AbortController` integration
+- `repeat` — call a function N times with a delay between each
+
+### Typed Event Emitter
+- Define your event map once — TypeScript enforces payload types on every `emit` and `on`
+- `on`, `off`, `once`, `emit`, `clear`
+- Typos and wrong payload types are caught at compile time, not runtime
+
+### Function Composition
+- `pipeline` / `compose` — reusable typed composed functions
+- `pipelineAsync` / `composeAsync` — async steps, sync and async freely mixed
+- `curry` — partial application with full type inference
+- `tap` — side effects inside a pipeline without breaking the chain
+- `when` — conditionally apply a transform
+
+---
+
+## Why duckkit?
+
+### Typed `groupBy` — not `any`
+
+```typescript
+// lodash — returns Dictionary<User[]>, basically any
+const grouped = _.groupBy(users, x => x.country)
+
+// duckkit — returns Record<"GE" | "US", User[]>
+const grouped = groupBy(users, x => x.country)
+grouped.GE[0].name  // string ✅ — full autocomplete, no any
+```
+
+### `deepClone` that preserves `Date` objects
+
+```typescript
+// JSON trick — everyone uses it, everyone hits this bug
+const clone = JSON.parse(JSON.stringify(obj))
+clone.createdAt  // string ❌ — Date became a string
+
+// duckkit
+const clone = deepClone(obj)
+clone.createdAt  // Date ✅
+```
+
+### `safe` — try/catch as a value
+
+```typescript
+// before
+let data
+try {
+  data = JSON.parse(raw)
+} catch (e) { ... }
+
+// duckkit
+const result = safe(() => JSON.parse(raw))
+if (result.ok) console.log(result.value)  // typed ✅
+```
+
+### `delaySkippable` — cancellable wait
+
+```typescript
+// resolves after 3s, or immediately if userClickedSkip becomes true
+await delaySkippable(3000, () => userClickedSkip)
+```
+
+### Typed event emitter
+
+```typescript
+const emitter = createEmitter<{
+  win: number
+  spin: void
+}>()
+
+emitter.emit('win', 500)     // ✅
+emitter.emit('win', 'oops')  // ❌ TypeScript error
+emitter.emit('wiiin', 500)   // ❌ typo caught at compile time
 ```
 
 ---
@@ -42,189 +188,21 @@ import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from
 
 ---
 
-## Array
+## Documentation
 
-`groupBy` `flatGroupBy` `sortBy` `topBy` `minBy` `maxBy` `partition` `chunk` `unique` `zip` `flatten` `range` `compact` `sample` `shuffle` `without` `union` `intersection` `difference` `countBy` `keyBy` `sum` `sumBy`
+Full API documentation with examples and edge case notes:
 
-```typescript
-groupBy(users, x => x.country)
-// { GE: User[], US: User[] } — typed, not Record<string, any> ✅
-
-const [admins, rest] = partition(users, x => x.admin)
-
-compact([1, null, 2, undefined, 3])  // [1, 2, 3] — type narrowed ✅
-```
-
-→ [Full array docs](docs/array.md)
-
----
-
-## Object
-
-`pick` `omit` `deepMerge` `deepClone` `isEqual` `mapKeys` `mapValues` `invertObject` `flattenObject` `unflattenObject` `filterKeys` `filterValues` `keys` `values` `entries` `fromEntries`
-
-```typescript
-pick(user, ['name', 'email'])   // removes password from type ✅
-omit(user, ['password'])        // .password is now a compile error ✅
-
-deepMerge(defaults, overrides)  // nested objects merged, not replaced — Date values preserved ✅
-```
-
-→ [Full object docs](docs/object.md)
-
----
-
-## Async
-
-`safe` `safeAsync` `pipe` `memo` `memoAsync` `debounce` `throttle` `retry` `timeout` `once` `defer` `parallel` `sequential`
-
-```typescript
-const result = safe(() => JSON.parse(raw))
-if (result.ok) console.log(result.value)  // typed ✅
-
-await retry(() => fetchUser(id), 3, 1000)       // 3 attempts, 1s between
-await parallel([fetchA, fetchB, fetchC], { concurrency: 2 })
-
-// bounded cache — safe for long-running apps
-const getUser = memoAsync(fetchUser, { maxSize: 100 })
-```
-
-→ [Full async docs](docs/async.md)
-
----
-
-## Date
-
-`timeAgo` `formatDate` `daysBetween` `addDays` `subDays` `addMonths` `addYears` `isBefore` `isAfter` `isSameDay` `startOfDay` `endOfDay` `startOfWeek` `startOfMonth` `isToday` `isYesterday` `isWeekend` `isThisWeek` `isThisYear`
-
-```typescript
-timeAgo(new Date(Date.now() - 3 * 60_000))  // "3 minutes ago"
-formatDate(new Date(), 'MMM D, YYYY')        // "May 13, 2026"
-addDays(new Date(), 30)                      // deadline in 30 days
-```
-
-→ [Full date docs](docs/date.md)
-
----
-
-## Number
-
-`clamp` `lerp` `roundTo` `truncateTo` `randomInt` `inRange` `average` `normalize` `toOrdinal` `toRoman` `formatNumber` `formatBytes` `formatDuration`
-
-```typescript
-clamp(userInput, 0, 1)         // safe opacity value
-lerp(position, target, 0.1)    // smooth animation step
-toOrdinal(21)                  // "21st"
-formatBytes(1048576)           // "1 MB"
-formatDuration(3661)           // "1h 1m 1s"
-```
-
-→ [Full number docs](docs/number.md)
-
----
-
-## String
-
-`capitalize` `truncate` `slugify` `excerpt` `camelCase` `snakeCase` `kebabCase` `pascalCase` `titleCase` `isEmpty` `randomId` `countOccurrences` `escapeHtml` `unescapeHtml` `template` `words` `mask` `stripHtml`
-
-```typescript
-slugify('Hello World!')                      // "hello-world"
-mask('4242424242424242')                     // "************4242"
-template('Hello {name}!', { name: 'Zura' }) // "Hello Zura!"
-escapeHtml('<script>alert("xss")</script>')  // safe ✅
-```
-
-→ [Full string docs](docs/string.md)
-
----
-
-## Delay
-
-`delay` `delaySkippable` `delayWithAbort` `repeat`
-
-```typescript
-await delay(1000)
-await delaySkippable(3000, () => userSkipped)  // resolves early if skipped
-await repeat(3, 500, i => console.log(`tick ${i}`))
-```
-
-→ [Full delay docs](docs/delay.md)
-
----
-
-## Emitter
-
-`createEmitter`
-
-A fully typed event emitter. Define your event map once — TypeScript enforces correct payload types on every `emit` and `on` call. Use `void` for events with no payload.
-
-```typescript
-const emitter = createEmitter<{
-  win: number
-  spin: void
-  error: { code: number; message: string }
-}>()
-
-emitter.on('win', amount => console.log(amount))  // amount: number ✅
-emitter.emit('win', 500)
-emitter.emit('spin')                              // no payload needed ✅
-emitter.emit('win', 'oops')                       // TypeScript error ❌
-
-const off = emitter.on('win', handler)
-off()
-
-emitter.once('win', amount => showBigWin(amount))
-```
-
-→ [Full emitter docs](docs/emitter.md)
-
----
-
-## Fn
-
-`pipeline` `compose` `pipelineAsync` `composeAsync` `curry` `tap` `when`
-
-Function composition utilities. `pipeline` and `compose` return reusable typed functions — unlike `pipe` which threads a single value. All overloaded up to 5 steps with full type inference.
-
-```typescript
-// pipeline — left to right, returns a reusable function
-const process = pipeline(
-  (s: string) => s.trim(),
-  s => s.toUpperCase(),
-  s => s.split(' '),
-)
-process('  hello world  ')  // ["HELLO", "WORLD"] ✅ — reusable
-
-// tap — side effect without changing the value
-const process = pipeline(
-  (s: string) => s.trim(),
-  tap(s => console.log('after trim:', s)),  // logs, passes value through ✅
-  s => s.toUpperCase(),
-)
-
-// when — conditionally apply a function
-const process = pipeline(
-  (n: number) => n * 2,
-  when(n => n > 10, n => n + 100),  // only runs if n > 10
-  n => String(n),
-)
-process(3)   // "6"   — condition false, skipped
-process(10)  // "120" — condition true, applied
-
-// async steps supported
-const processUser = pipelineAsync(
-  (id: string) => fetchUser(id),
-  user => normalizeUser(user),
-  user => saveToCache(user),
-)
-const user = await processUser('abc123')  // fully typed ✅
-
-// curry — partial application
-const multiply = curry((factor: number, value: number) => value * factor)
-[1, 2, 3].map(multiply(2))   // [2, 4, 6] ✅
-```
-
-→ [Full fn docs](docs/fn.md)
+| Module | Docs |
+|--------|------|
+| Array | [docs/array.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md) |
+| Object | [docs/object.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md) |
+| Async | [docs/async.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md) |
+| Date | [docs/date.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md) |
+| Number | [docs/number.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md) |
+| String | [docs/string.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md) |
+| Delay | [docs/delay.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md) |
+| Emitter | [docs/emitter.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md) |
+| Fn | [docs/fn.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md) |
 
 ---
 
