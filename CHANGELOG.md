@@ -4,12 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `validate` — `isEmail`, `isUrl`, `isUUID`, `isIP`, `isIPv4`, `isIPv6`, `isCreditCard`, `isPhone`
+- `validate` — `isString`, `isNumber`, `isBoolean`, `isArray`, `isObject`, `isDate`, `isFunction`
+- `validate` — `isNull`, `isUndefined`, `isNullOrUndefined`, `isPromise`
+- `validate` — `isEmpty`, `isEmptyObject`, `isEnum`, `isNaN`, `isFinite`
+- `encode` — `encodeBase64`, `decodeBase64`, `encodeBase64Url`, `decodeBase64Url`
+- `encode` — `encodeHex`, `decodeHex`, `encodeUri`, `decodeUri`, `encodeJson`, `decodeJson`
+- `object` — `deepFreeze`, `objectDiff`, `mergeIf`, `hasOwn`
+
+### Docs
+- README updated with Available Utilities table, Key Features sections, Why duckkit section
+- `docs/validate.md`, `docs/encode.md` added
+- `docs/object.md` updated with new functions
+
+---
+
 ## [0.1.6] - 2026-05-21
 
 ### Added
 - `fn` — `tap`: run a side effect in a pipeline without changing the value
 - `fn` — `when`: conditionally apply a function based on a predicate
-- `date` — `formatDuration`: format seconds into a human-readable string (e.g. `"1h 1m 1s"`)
+- `number` — `formatDuration`: format seconds into a human-readable string (e.g. `"1h 1m 1s"`)
+
+### Chore
+- `CHANGELOG.md` added
+- README and `package.json` updated for improved clarity and feature highlights
 
 ---
 
@@ -88,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.6...HEAD
 [0.1.6]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.3...v0.1.4
