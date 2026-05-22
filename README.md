@@ -8,7 +8,7 @@
 
 TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed.
 
-Covers array, object, string, number, date, async, delay, emitter, encode, and function composition utilities. Each function is properly typed — no `any`, no `Record<string, unknown>` workarounds. Import everything or per category, only what you use ends up in the bundle.
+Covers array, object, string, number, date, async, delay, emitter, encode, validate, and function composition utilities. Each function is properly typed — no `any`, no `Record<string, unknown>` workarounds. Import everything or per category, only what you use ends up in the bundle.
 
 ---
 
@@ -27,6 +27,7 @@ A comprehensive TypeScript utility library that provides:
 - **Typed event emitter** — payload types enforced at compile time
 - **Function composition** — `pipeline`, `compose`, `curry`, `tap`, `when` with full type inference
 - **Encoding utilities** — Base64, Base64URL, Hex, URI, JSON — all with safe error handling
+- **Validation utilities** — format validators, type guards, value checks — all return `boolean`
 
 ---
 
@@ -51,6 +52,7 @@ npm install duckkit
 | **Delay** | `delay()` `delaySkippable()` `delayWithAbort()` `repeat()` |
 | **Emitter** | `createEmitter()` — with `on()` `off()` `once()` `emit()` `clear()` |
 | **Encode** | `encodeBase64()` `decodeBase64()` `encodeBase64Url()` `decodeBase64Url()` `encodeHex()` `decodeHex()` `encodeUri()` `decodeUri()` `encodeJson()` `decodeJson()` |
+| **Validate** | `isEmail()` `isUrl()` `isUUID()` `isIP()` `isIPv4()` `isIPv6()` `isCreditCard()` `isPhone()` `isString()` `isNumber()` `isBoolean()` `isArray()` `isObject()` `isDate()` `isFunction()` `isNull()` `isUndefined()` `isNullOrUndefined()` `isPromise()` `isEmpty()` `isEmptyObject()` `isEnum()` |
 | **Fn** | `pipeline()` `compose()` `pipelineAsync()` `composeAsync()` `curry()` `tap()` `when()` |
 | **Result types** | `safe()` `safeAsync()` — returns `Ok<T>` \| `Err`, import `Result`, `Ok`, `Err` types |
 
@@ -122,6 +124,14 @@ npm install duckkit
 - `encodeHex` / `decodeHex` — hexadecimal encoding
 - `encodeUri` / `decodeUri` — URI component encoding with safe error handling
 - `encodeJson` / `decodeJson` — safe JSON stringify/parse, returns `null` on failure
+
+### Validate Utilities
+- Format validators: `isEmail`, `isUrl`, `isUUID`, `isIP`, `isIPv4`, `isIPv6`, `isCreditCard`, `isPhone`
+- Type guards: `isString`, `isNumber`, `isBoolean`, `isArray`, `isObject`, `isDate`, `isFunction`
+- Null checks: `isNull`, `isUndefined`, `isNullOrUndefined`
+- Async: `isPromise`
+- Value checks: `isEmpty`, `isEmptyObject`
+- Enum: `isEnum` — checks enum values, not keys
 
 ### Typed Event Emitter
 - Define your event map once — TypeScript enforces payload types on every `emit` and `on`
@@ -215,6 +225,7 @@ import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
 import { createEmitter } from 'duckkit/emitter'
 import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from 'duckkit/fn'
 import { encodeBase64, decodeBase64, encodeHex, decodeHex, encodeUri, decodeUri, encodeJson, decodeJson } from 'duckkit/encode'
+import { isEmail, isUrl, isUUID, isString, isNumber, isEnum, isEmpty } from 'duckkit/validate'
 ```
 
 ---
@@ -235,6 +246,7 @@ Full API documentation with examples and edge case notes:
 | Emitter | [docs/emitter.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md) |
 | Fn | [docs/fn.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md) |
 | Encode | [docs/encode.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md) |
+| Validate | [docs/validate.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md) |
 
 ---
 
