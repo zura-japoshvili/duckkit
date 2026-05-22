@@ -1,6 +1,6 @@
 {
   "name": "duckkit",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed. Typed groupBy, safe/Result type, pipe, pipeline, compose, curry, typed event emitter, delaySkippable, and more.",
   "author": "Zura Japoshvili",
   "license": "MIT",
@@ -206,9 +206,9 @@
       "require": "./dist/emitter/index.cjs"
     },
     "./encode": {
-    "types": "./dist/encode/index.d.ts",
-    "import": "./dist/encode/index.js",
-    "require": "./dist/encode/index.cjs"
+      "types": "./dist/encode/index.d.ts",
+      "import": "./dist/encode/index.js",
+      "require": "./dist/encode/index.cjs"
     }
   },
   "files": [
