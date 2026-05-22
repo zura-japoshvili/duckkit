@@ -8,7 +8,7 @@
 
 TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed.
 
-Covers array, object, string, number, date, async, delay, emitter, and function composition utilities. Each function is properly typed — no `any`, no `Record<string, unknown>` workarounds. Import everything or per category, only what you use ends up in the bundle.
+Covers array, object, string, number, date, async, delay, emitter, encode, and function composition utilities. Each function is properly typed — no `any`, no `Record<string, unknown>` workarounds. Import everything or per category, only what you use ends up in the bundle.
 
 ---
 
@@ -26,6 +26,7 @@ A comprehensive TypeScript utility library that provides:
 - **`delaySkippable`** — cancellable async wait, unique to duckkit
 - **Typed event emitter** — payload types enforced at compile time
 - **Function composition** — `pipeline`, `compose`, `curry`, `tap`, `when` with full type inference
+- **Encoding utilities** — Base64, Base64URL, Hex, URI, JSON — all with safe error handling
 
 ---
 
@@ -34,6 +35,24 @@ A comprehensive TypeScript utility library that provides:
 ```bash
 npm install duckkit
 ```
+
+---
+
+## Available Utilities
+
+| Category | Functions |
+|----------|-----------|
+| **Array** | `groupBy()` `flatGroupBy()` `sortBy()` `topBy()` `minBy()` `maxBy()` `partition()` `chunk()` `unique()` `zip()` `flatten()` `range()` `compact()` `sample()` `shuffle()` `without()` `union()` `intersection()` `difference()` `countBy()` `keyBy()` `sum()` `sumBy()` |
+| **Object** | `pick()` `omit()` `deepClone()` `deepMerge()` `isEqual()` `mapKeys()` `mapValues()` `invertObject()` `flattenObject()` `unflattenObject()` `filterKeys()` `filterValues()` `keys()` `values()` `entries()` `fromEntries()` `deepFreeze()` `objectDiff()` `mergeIf()` `hasOwn()` |
+| **Async** | `safe()` `safeAsync()` `pipe()` `memo()` `memoAsync()` `debounce()` `throttle()` `retry()` `timeout()` `once()` `defer()` `parallel()` `sequential()` |
+| **Date** | `timeAgo()` `formatDate()` `daysBetween()` `addDays()` `subDays()` `addMonths()` `addYears()` `isBefore()` `isAfter()` `isSameDay()` `startOfDay()` `endOfDay()` `startOfWeek()` `startOfMonth()` `isToday()` `isYesterday()` `isWeekend()` `isThisWeek()` `isThisYear()` |
+| **Number** | `clamp()` `lerp()` `roundTo()` `truncateTo()` `randomInt()` `inRange()` `average()` `normalize()` `toOrdinal()` `toRoman()` `formatNumber()` `formatBytes()` `formatDuration()` |
+| **String** | `capitalize()` `truncate()` `excerpt()` `slugify()` `camelCase()` `snakeCase()` `kebabCase()` `pascalCase()` `titleCase()` `isEmpty()` `randomId()` `countOccurrences()` `escapeHtml()` `unescapeHtml()` `template()` `words()` `mask()` `stripHtml()` |
+| **Delay** | `delay()` `delaySkippable()` `delayWithAbort()` `repeat()` |
+| **Emitter** | `createEmitter()` — with `on()` `off()` `once()` `emit()` `clear()` |
+| **Encode** | `encodeBase64()` `decodeBase64()` `encodeBase64Url()` `decodeBase64Url()` `encodeHex()` `decodeHex()` `encodeUri()` `decodeUri()` `encodeJson()` `decodeJson()` |
+| **Fn** | `pipeline()` `compose()` `pipelineAsync()` `composeAsync()` `curry()` `tap()` `when()` |
+| **Result types** | `safe()` `safeAsync()` — returns `Ok<T>` \| `Err`, import `Result`, `Ok`, `Err` types |
 
 ---
 
@@ -49,6 +68,10 @@ npm install duckkit
 - `deepClone` — preserves `Date` objects, unlike `JSON.parse(JSON.stringify(...))`
 - `deepMerge` — nested merge with Date support, non-mutating
 - `pick`, `omit` — removed keys disappear from the TypeScript type entirely
+- `deepFreeze` — recursively freezes and returns `DeepReadonly<T>`
+- `objectDiff` — returns keys that changed between two objects
+- `mergeIf` — merges only defined values, skips `null` and `undefined`
+- `hasOwn` — safe typed wrapper for `Object.hasOwn`
 - `flattenObject`, `unflattenObject`, `invertObject`
 - `mapKeys`, `mapValues`, `filterKeys`, `filterValues`
 - Typed `keys`, `values`, `entries`, `fromEntries`
@@ -92,6 +115,13 @@ npm install duckkit
 - `delaySkippable` — resolves early if a condition becomes true (unique to duckkit)
 - `delayWithAbort` — native `AbortController` integration
 - `repeat` — call a function N times with a delay between each
+
+### Encode Utilities
+- `encodeBase64` / `decodeBase64` — standard Base64, Unicode-safe
+- `encodeBase64Url` / `decodeBase64Url` — URL-safe Base64, no `+`, `/`, `=`
+- `encodeHex` / `decodeHex` — hexadecimal encoding
+- `encodeUri` / `decodeUri` — URI component encoding with safe error handling
+- `encodeJson` / `decodeJson` — safe JSON stringify/parse, returns `null` on failure
 
 ### Typed Event Emitter
 - Define your event map once — TypeScript enforces payload types on every `emit` and `on`
@@ -184,6 +214,7 @@ import { slugify, camelCase, escapeHtml, template, mask, excerpt } from 'duckkit
 import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
 import { createEmitter } from 'duckkit/emitter'
 import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from 'duckkit/fn'
+import { encodeBase64, decodeBase64, encodeHex, decodeHex, encodeUri, decodeUri, encodeJson, decodeJson } from 'duckkit/encode'
 ```
 
 ---
@@ -203,6 +234,7 @@ Full API documentation with examples and edge case notes:
 | Delay | [docs/delay.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md) |
 | Emitter | [docs/emitter.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md) |
 | Fn | [docs/fn.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md) |
+| Encode | [docs/encode.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md) |
 
 ---
 

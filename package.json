@@ -204,6 +204,11 @@
       "types": "./dist/emitter/index.d.ts",
       "import": "./dist/emitter/index.js",
       "require": "./dist/emitter/index.cjs"
+    },
+    "./encode": {
+    "types": "./dist/encode/index.d.ts",
+    "import": "./dist/encode/index.js",
+    "require": "./dist/encode/index.cjs"
     }
   },
   "files": [
