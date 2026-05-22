@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pick, omit, deepMerge, mapKeys, mapValues } from '../src/object/index'
+import { pick, omit, deepMerge, mapKeys, mapValues, deepFreeze, objectDiff, mergeIf, hasOwn } from '../src/object/index'
 import { isEqual, deepClone } from '../src/object/index'
 import { invertObject, flattenObject, unflattenObject, filterKeys, filterValues, keys, values, entries, fromEntries } from '../src/object/index'
 
@@ -378,3 +378,141 @@ describe('fromEntries', () => {
     expect(fromEntries(entries(obj) as [string, number][])).toEqual(obj)
   })
 })
+
+describe('deepFreeze', () => {
+  it('freezes top-level object', () => {
+    const obj = deepFreeze({ a: 1 })
+    expect(() => { (obj as Record<string, unknown>).a = 99 }).toThrow()
+  })
+ 
+  it('freezes nested objects', () => {
+    const obj = deepFreeze({ a: { b: 1 } })
+    expect(() => { (obj.a as Record<string, unknown>).b = 99 }).toThrow()
+  })
+ 
+  it('returns the same reference', () => {
+    const obj = { a: 1 }
+    expect(deepFreeze(obj)).toBe(obj)
+  })
+ 
+  it('works with arrays', () => {
+    const obj = deepFreeze({ tags: [1, 2, 3] })
+    expect(Object.isFrozen(obj.tags)).toBe(true)
+  })
+ 
+  it('already frozen object does not throw', () => {
+    const obj = Object.freeze({ a: 1 })
+    expect(() => deepFreeze(obj)).not.toThrow()
+  })
+ 
+  it('deeply nested freezing works', () => {
+    const obj = deepFreeze({ a: { b: { c: 1 } } })
+    expect(Object.isFrozen(obj.a.b)).toBe(true)
+  })
+})
+
+describe('objectDiff', () => {
+  it('returns changed keys', () => {
+    const diff = objectDiff({ a: 1, b: 2 }, { a: 1, b: 3 })
+    expect(diff).toContain('b')
+    expect(diff).not.toContain('a')
+  })
+
+  it('returns added keys', () => {
+    const diff = objectDiff({ a: 1 }, { a: 1, b: 2 } as any)
+    expect(diff).toContain('b')
+  })
+
+  it('returns removed keys', () => {
+    const diff = objectDiff({ a: 1, b: 2 }, { a: 1 } as any)
+    expect(diff).toContain('b')
+  })
+
+  it('returns empty array when objects are equal', () => {
+    expect(objectDiff({ a: 1, b: 2 }, { a: 1, b: 2 })).toEqual([])
+  })
+
+  it('handles empty objects', () => {
+    expect(objectDiff({} as any, {} as any)).toEqual([])
+  })
+
+  it('detects undefined vs value change', () => {
+    const diff = objectDiff({ a: 1 }, { a: undefined } as any)
+    expect(diff).toContain('a')
+  })
+
+  it('detects null vs value change', () => {
+    const diff = objectDiff({ a: 1 }, { a: null } as any)
+    expect(diff).toContain('a')
+  })
+
+  it('returns multiple changed keys', () => {
+    const diff = objectDiff({ a: 1, b: 2, c: 3 }, { a: 9, b: 9, c: 3 })
+    expect(diff).toContain('a')
+    expect(diff).toContain('b')
+    expect(diff).not.toContain('c')
+  })
+})
+
+describe('mergeIf', () => {
+  it('merges defined values', () => {
+    expect(mergeIf({ a: 1, b: 2 }, { b: 99 })).toEqual({ a: 1, b: 99 })
+  })
+
+  it('skips undefined values', () => {
+    expect(mergeIf({ a: 1, b: 2 }, { b: undefined })).toEqual({ a: 1, b: 2 })
+  })
+
+  it('skips null values', () => {
+    expect(mergeIf({ a: 1, b: 2 }, { b: null as any })).toEqual({ a: 1, b: 2 })
+  })
+
+  it('adds new keys from override', () => {
+    const result = mergeIf({ a: 1 }, { b: 2 } as any)
+    expect(result).toEqual({ a: 1, b: 2 })
+  })
+
+  it('does not mutate base', () => {
+    const base = { a: 1, b: 2 }
+    mergeIf(base, { b: 99 })
+    expect(base.b).toBe(2)
+  })
+
+  it('handles empty override', () => {
+    expect(mergeIf({ a: 1 }, {})).toEqual({ a: 1 })
+  })
+
+  it('handles empty base', () => {
+    expect(mergeIf({} as any, { a: 1 } as any)).toEqual({ a: 1 })
+  })
+
+  it('0 and false are kept — only null/undefined skipped', () => {
+    expect(mergeIf({ a: 1, b: 2 }, { a: 0, b: false } as any)).toEqual({ a: 0, b: false })
+  })
+})
+
+describe('hasOwn', () => {
+  it('returns true for own key', () => expect(hasOwn({ a: 1 }, 'a')).toBe(true))
+  it('returns false for missing key', () => expect(hasOwn({ a: 1 }, 'b')).toBe(false))
+  it('returns false for inherited key', () => expect(hasOwn({}, 'toString')).toBe(false))
+  it('returns false for empty object', () => expect(hasOwn({}, 'a')).toBe(false))
+
+  it('works with symbol keys', () => {
+    const sym = Symbol('id')
+    expect(hasOwn({ [sym]: 1 }, sym)).toBe(true)
+  })
+
+  it('works with undefined value — key still exists', () => {
+    expect(hasOwn({ a: undefined }, 'a')).toBe(true)
+  })
+
+  it('works with null value — key still exists', () => {
+    expect(hasOwn({ a: null }, 'a')).toBe(true)
+  })
+
+  it('works on object with overridden hasOwnProperty', () => {
+    const obj = { hasOwnProperty: () => false, a: 1 }
+    expect(hasOwn(obj, 'a')).toBe(true)
+  })
+})
+ 

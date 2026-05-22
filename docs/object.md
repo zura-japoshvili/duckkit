@@ -401,3 +401,102 @@ fromEntries(entries(obj) as [string, number][])
 > ```
 >
 > This is the same tradeoff as the native typed wrappers in every TypeScript codebase — the better types are worth it, just don't write logic that depends on the key list being exhaustive.
+
+## deepFreeze
+
+Recursively freezes an object and all nested objects. Returns the object typed as `DeepReadonly<T>` — mutations are caught at compile time.
+
+```typescript
+deepFreeze<T extends object>(obj: T): DeepReadonly<T>
+```
+
+```typescript
+const config = deepFreeze({ db: { host: 'localhost', port: 5432 } })
+
+config.db.port = 9999   // TypeScript error ❌ — deeply readonly
+config.db.host = 'prod' // TypeScript error ❌
+```
+
+Returns the same object reference. Arrays are frozen too.
+
+> **Only freezes own properties:** Prototype chain is not frozen.
+
+> **Already frozen objects are safe:** Calling `deepFreeze` on an already-frozen object does not throw.
+
+## objectDiff
+
+Returns the keys that differ between two objects. A key is included if it was added, removed, or its value changed (shallow comparison).
+
+```typescript
+objectDiff<T extends Record<string, unknown>>(base: T, updated: T): string[]
+```
+
+```typescript
+objectDiff({ a: 1, b: 2 }, { a: 1, b: 3, c: 4 })
+// ['b', 'c'] — b changed, c was added
+
+objectDiff({ a: 1, b: 2 }, { a: 1 })
+// ['b'] — b was removed
+
+objectDiff({ a: 1 }, { a: 1 })
+// []
+```
+
+Useful for form dirty-checking, state change detection, and audit logs.
+
+> **Shallow comparison only:** Nested objects are compared by reference, not value.
+>
+> ```typescript
+> const obj = { a: { b: 1 } }
+> objectDiff(obj, { a: obj.a })  // [] — same reference, no diff ⚠️
+> ```
+
+
+## mergeIf
+
+Like `deepMerge` but skips keys where the override value is `null` or `undefined`. Base values are preserved when the override has nothing meaningful to contribute.
+
+```typescript
+mergeIf<T extends Record<string, unknown>>(base: T, override: Partial<T>): T
+```
+
+```typescript
+mergeIf({ name: 'Zura', role: 'admin' }, { role: undefined, age: 25 })
+// { name: 'Zura', role: 'admin', age: 25 } — role preserved ✅
+
+mergeIf({ a: 1 }, { a: null })
+// { a: 1 } — null skipped ✅
+
+mergeIf({ a: 1 }, { a: 0 })
+// { a: 0 } — 0 is kept, only null/undefined are skipped ✅
+```
+
+Does not mutate the base object.
+
+> **Shallow only:** Only top-level keys are processed. Nested objects are replaced, not recursively merged.
+
+
+## hasOwn
+
+Typed wrapper for `Object.hasOwn`. Returns `true` if the object has the specified key as its own property — not inherited from the prototype.
+
+```typescript
+hasOwn<T extends object>(obj: T, key: PropertyKey): key is keyof T
+```
+
+```typescript
+hasOwn({ a: 1 }, 'a')       // true
+hasOwn({ a: 1 }, 'b')       // false
+hasOwn({}, 'toString')      // false — inherited, not own
+
+const sym = Symbol('id')
+hasOwn({ [sym]: 1 }, sym)   // true ✅
+```
+
+Safer than `obj.hasOwnProperty(key)` — works correctly even if `hasOwnProperty` has been overridden on the object.
+
+```typescript
+const obj = { hasOwnProperty: () => false, a: 1 }
+obj.hasOwnProperty('a')  // false ❌ — overridden
+hasOwn(obj, 'a')         // true  ✅ — safe
+```
