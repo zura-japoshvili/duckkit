@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-05-27
+
+### Security
+- `object/unflattenObject` — prevent prototype pollution by skipping keys with `__proto__`, `constructor`, or `prototype` segments. Safe on untrusted input
+
+### Fixed
+- `object/deepClone` — `Map`, `Set`, `RegExp`, and class instances no longer silently cloned to `{}`. They now pass through by reference; use `structuredClone()` for full fidelity
+- `object/deepMerge` — no longer walks into `Map`, `Set`, `RegExp`, and class instances as plain objects. Treated as leaf values, override wins
+- `object/flattenObject` — `Date` values and empty nested objects no longer silently dropped
+- `object/isEqual` — `NaN` now equals `NaN`. `Map`, `Set`, and `RegExp` compared correctly (were false positives). Class instances no longer equal plain objects with the same own keys
+- `object/pick` — no longer copies inherited properties from the prototype chain
+- `array/flatten` — switched to native `Array.prototype.flat()`. Previous spread-based implementation stack-overflowed on inputs around 10k+ inner arrays
+- `array/chunk` — throws on non-integer, `NaN`, `Infinity`, and negative size (previously produced garbage chunks or empty results)
+- `array/maxBy`, `array/minBy` — `NaN` from the iteratee no longer poisons the comparison; valid numbers always win
+
+### Changed
+- `array/groupBy`, `array/keyBy`, `array/countBy`, `array/flatGroupBy` — return type is now `Partial<Record<K, ...>>` to reflect runtime. Missing keys read as `undefined`; TypeScript forces `?.` or `?? 0` access. Breaking at the type level only — no runtime behavior change
+- `object/objectDiff` — return type simplified from `(keyof T | string)[]` to `string[]`
+
+### Refactor
+- `object/index` — `DeepReadonly` exported via `export type` for `isolatedModules` compatibility
+- `object/deepClone` — internal `arr.map(deepClone)` replaced with explicit arrow form
+
+### Docs
+- `docs/object.md` — added prototype pollution note for `unflattenObject`, behavior notes for `deepMerge`/`flattenObject`/`deepClone`, removed warnings for now-fixed bugs (NaN, Map/Set/RegExp false positives)
+- `docs/array.md` — updated `groupBy`/`keyBy`/`countBy`/`flatGroupBy` for new Partial types, integer requirement for `chunk`, NaN behavior for `min`/`maxBy`, floating-point note for `sum`/`sumBy`, duplicate-preservation note for `intersection`/`difference`
+
+---
+
 ## [0.1.7] - 2026-05-22
 
 ### Added
@@ -110,7 +139,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.3...v0.1.4
