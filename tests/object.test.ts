@@ -20,6 +20,51 @@ describe('isEqual', () => {
   it('dates not equal', () => expect(isEqual(new Date('2026-01-01'), new Date('2026-01-02'))).toBe(false))
   it('different types', () => expect(isEqual(1, '1')).toBe(false))
   it('extra keys make objects not equal', () => expect(isEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false))
+
+  // New: NaN handling
+  it('NaN equals NaN', () => expect(isEqual(NaN, NaN)).toBe(true))
+  it('NaN does not equal number', () => expect(isEqual(NaN, 1)).toBe(false))
+
+  // New: RegExp handling
+  it('regex equal — same pattern and flags', () => expect(isEqual(/foo/g, /foo/g)).toBe(true))
+  it('regex not equal — different source', () => expect(isEqual(/a/, /b/)).toBe(false))
+  it('regex not equal — different flags', () => expect(isEqual(/a/g, /a/i)).toBe(false))
+
+  // New: Map handling
+  it('Map equal — same entries', () => {
+    expect(isEqual(new Map([['a', 1]]), new Map([['a', 1]]))).toBe(true)
+  })
+  it('Map not equal — different values', () => {
+    expect(isEqual(new Map([['a', 1]]), new Map([['a', 2]]))).toBe(false)
+  })
+  it('Map not equal — different keys', () => {
+    expect(isEqual(new Map([['a', 1]]), new Map([['b', 1]]))).toBe(false)
+  })
+  it('Map not equal — different size', () => {
+    expect(isEqual(new Map([['a', 1]]), new Map([['a', 1], ['b', 2]]))).toBe(false)
+  })
+
+  // New: Set handling
+  it('Set equal — same items', () => {
+    expect(isEqual(new Set([1, 2, 3]), new Set([1, 2, 3]))).toBe(true)
+  })
+  it('Set not equal — different items', () => {
+    expect(isEqual(new Set([1, 2, 3]), new Set([4, 5, 6]))).toBe(false)
+  })
+  it('Set not equal — different size', () => {
+    expect(isEqual(new Set([1, 2]), new Set([1, 2, 3]))).toBe(false)
+  })
+
+  // New: prototype check
+  it('class instance not equal to plain object with same keys', () => {
+    class User { constructor(public name: string) {} }
+    expect(isEqual(new User('Z'), { name: 'Z' })).toBe(false)
+  })
+
+  // New: array vs object mismatch
+  it('array not equal to object', () => {
+    expect(isEqual([1, 2], { 0: 1, 1: 2 } as unknown)).toBe(false)
+  })
 })
 
 describe('deepClone', () => {
@@ -44,18 +89,43 @@ describe('deepClone', () => {
     expect(clone).not.toBe(arr)
   })
 
-  it('clones Date objects', () => {
-    const date = new Date('2026-01-01')
-    const clone = deepClone(date)
-    expect(clone).toEqual(date)
-    expect(clone).not.toBe(date)
-    expect(clone instanceof Date).toBe(true)
+  it('clones nested Date inside object', () => {
+    const obj = { createdAt: new Date('2026-01-01') }
+    const clone = deepClone(obj)
+    expect(clone.createdAt).toEqual(obj.createdAt)
+    expect(clone.createdAt).not.toBe(obj.createdAt)
+    expect(clone.createdAt instanceof Date).toBe(true)
+  })
+
+  it('does not share array references in nested objects', () => {
+    const obj = { tags: [1, 2, 3] }
+    const clone = deepClone(obj)
+    clone.tags.push(4)
+    expect(obj.tags).toEqual([1, 2, 3])
   })
 
   it('handles null', () => expect(deepClone(null)).toBeNull())
   it('handles undefined', () => expect(deepClone(undefined)).toBeUndefined())
   it('handles primitives', () => expect(deepClone(42)).toBe(42))
   it('handles strings', () => expect(deepClone('hello')).toBe('hello'))
+
+  // New: Map/Set/RegExp pass through (documented)
+  it('Map passes through by reference', () => {
+    const m = new Map([['a', 1]])
+    expect(deepClone(m)).toBe(m)
+  })
+  it('Set passes through by reference', () => {
+    const s = new Set([1, 2])
+    expect(deepClone(s)).toBe(s)
+  })
+
+  // New: symbol keys are dropped (documented)
+  it('drops symbol keys (documented limitation)', () => {
+    const sym = Symbol('id')
+    const obj = { name: 'Zura', [sym]: 42 }
+    const clone = deepClone(obj) as Record<string | symbol, unknown>
+    expect(clone[sym]).toBeUndefined()
+  })
 })
 
 describe('pick', () => {
@@ -87,6 +157,11 @@ describe('pick', () => {
   it('handles undefined values', () => {
     const obj = { a: undefined, b: 2 }
     expect(pick(obj, ['a'])).toEqual({ a: undefined })
+  })
+
+  // New: does not pick inherited properties
+  it('does not pick inherited properties', () => {
+    expect(pick({} as Record<string, unknown>, ['toString' as never])).toEqual({})
   })
 })
 
@@ -163,6 +238,30 @@ describe('deepMerge', () => {
 
   it('primitive in override replaces nested object in base', () => {
     expect(deepMerge({ a: { b: 1 } }, { a: 42 })).toEqual({ a: 42 })
+  })
+
+  // New: non-plain objects are leaf values
+  it('Date in override replaces Date in base — not merged', () => {
+    const a = new Date('2026-01-01')
+    const b = new Date('2026-05-22')
+    expect(deepMerge({ d: a }, { d: b }).d).toBe(b)
+  })
+
+  it('RegExp is replaced not merged', () => {
+    const result = deepMerge({ re: /a/ }, { re: /b/g })
+    expect(result.re).toEqual(/b/g)
+  })
+
+  it('Map in override replaces Map in base', () => {
+    const m1 = new Map([['a', 1]])
+    const m2 = new Map([['b', 2]])
+    expect(deepMerge({ m: m1 }, { m: m2 }).m).toBe(m2)
+  })
+
+  // New: undefined in override clears base value (documented footgun)
+  it('undefined in override clears base value', () => {
+    expect(deepMerge({ a: 1 } as { a: number | undefined }, { a: undefined }))
+      .toEqual({ a: undefined })
   })
 })
 
@@ -257,6 +356,23 @@ describe('flattenObject', () => {
   it('handles deeply nested object', () => {
     expect(flattenObject({ a: { b: { c: { d: 1 } } } })).toEqual({ 'a.b.c.d': 1 })
   })
+
+  // New: Date preserved
+  it('preserves Date as leaf value', () => {
+    const d = new Date('2026-01-01')
+    expect(flattenObject({ createdAt: d })).toEqual({ createdAt: d })
+  })
+
+  // New: Map preserved
+  it('preserves Map as leaf value', () => {
+    const m = new Map([['a', 1]])
+    expect(flattenObject({ data: m })).toEqual({ data: m })
+  })
+
+  // New: empty nested objects preserved
+  it('preserves empty nested objects', () => {
+    expect(flattenObject({ a: {}, b: 1 })).toEqual({ a: {}, b: 1 })
+  })
 })
 
 describe('unflattenObject', () => {
@@ -276,6 +392,24 @@ describe('unflattenObject', () => {
   it('flattenObject and unflattenObject are inverses', () => {
     const original = { user: { name: 'Zura', address: { city: 'Tbilisi' } } }
     expect(unflattenObject(flattenObject(original))).toEqual(original)
+  })
+
+  // New: prototype pollution prevention
+  it('blocks __proto__ pollution', () => {
+    const before = (Object.prototype as Record<string, unknown>).polluted
+    unflattenObject({ '__proto__.polluted': true })
+    expect((Object.prototype as Record<string, unknown>).polluted).toBe(before)
+  })
+
+  it('blocks constructor.prototype pollution', () => {
+    const before = (Object.prototype as Record<string, unknown>).polluted2
+    unflattenObject({ 'constructor.prototype.polluted2': true })
+    expect((Object.prototype as Record<string, unknown>).polluted2).toBe(before)
+  })
+
+  it('blocks prototype segment', () => {
+    const result = unflattenObject({ 'a.prototype.x': 1, 'b': 2 })
+    expect(result).toEqual({ b: 2 })
   })
 })
 
@@ -384,27 +518,27 @@ describe('deepFreeze', () => {
     const obj = deepFreeze({ a: 1 })
     expect(() => { (obj as Record<string, unknown>).a = 99 }).toThrow()
   })
- 
+
   it('freezes nested objects', () => {
     const obj = deepFreeze({ a: { b: 1 } })
     expect(() => { (obj.a as Record<string, unknown>).b = 99 }).toThrow()
   })
- 
+
   it('returns the same reference', () => {
     const obj = { a: 1 }
     expect(deepFreeze(obj)).toBe(obj)
   })
- 
+
   it('works with arrays', () => {
     const obj = deepFreeze({ tags: [1, 2, 3] })
     expect(Object.isFrozen(obj.tags)).toBe(true)
   })
- 
+
   it('already frozen object does not throw', () => {
     const obj = Object.freeze({ a: 1 })
     expect(() => deepFreeze(obj)).not.toThrow()
   })
- 
+
   it('deeply nested freezing works', () => {
     const obj = deepFreeze({ a: { b: { c: 1 } } })
     expect(Object.isFrozen(obj.a.b)).toBe(true)
@@ -419,12 +553,12 @@ describe('objectDiff', () => {
   })
 
   it('returns added keys', () => {
-    const diff = objectDiff({ a: 1 }, { a: 1, b: 2 } as any)
+    const diff = objectDiff({ a: 1 }, { a: 1, b: 2 })
     expect(diff).toContain('b')
   })
 
   it('returns removed keys', () => {
-    const diff = objectDiff({ a: 1, b: 2 }, { a: 1 } as any)
+    const diff = objectDiff({ a: 1, b: 2 }, { a: 1 })
     expect(diff).toContain('b')
   })
 
@@ -433,16 +567,16 @@ describe('objectDiff', () => {
   })
 
   it('handles empty objects', () => {
-    expect(objectDiff({} as any, {} as any)).toEqual([])
+    expect(objectDiff({}, {})).toEqual([])
   })
 
   it('detects undefined vs value change', () => {
-    const diff = objectDiff({ a: 1 }, { a: undefined } as any)
+    const diff = objectDiff({ a: 1 }, { a: undefined })
     expect(diff).toContain('a')
   })
 
   it('detects null vs value change', () => {
-    const diff = objectDiff({ a: 1 }, { a: null } as any)
+    const diff = objectDiff({ a: 1 }, { a: null })
     expect(diff).toContain('a')
   })
 
@@ -451,6 +585,12 @@ describe('objectDiff', () => {
     expect(diff).toContain('a')
     expect(diff).toContain('b')
     expect(diff).not.toContain('c')
+  })
+
+  // New: shallow only (documented)
+  it('does not detect changes inside nested objects (shallow)', () => {
+    const obj = { a: { b: 1 } }
+    expect(objectDiff(obj, { a: obj.a })).toEqual([])
   })
 })
 
@@ -464,11 +604,11 @@ describe('mergeIf', () => {
   })
 
   it('skips null values', () => {
-    expect(mergeIf({ a: 1, b: 2 }, { b: null as any })).toEqual({ a: 1, b: 2 })
+    expect(mergeIf({ a: 1, b: 2 }, { b: null as never })).toEqual({ a: 1, b: 2 })
   })
 
   it('adds new keys from override', () => {
-    const result = mergeIf({ a: 1 }, { b: 2 } as any)
+    const result = mergeIf<Record<string, unknown>>({ a: 1 }, { b: 2 })
     expect(result).toEqual({ a: 1, b: 2 })
   })
 
@@ -483,11 +623,20 @@ describe('mergeIf', () => {
   })
 
   it('handles empty base', () => {
-    expect(mergeIf({} as any, { a: 1 } as any)).toEqual({ a: 1 })
+    expect(mergeIf<Record<string, unknown>>({}, { a: 1 })).toEqual({ a: 1 })
   })
 
   it('0 and false are kept — only null/undefined skipped', () => {
-    expect(mergeIf({ a: 1, b: 2 }, { a: 0, b: false } as any)).toEqual({ a: 0, b: false })
+    expect(mergeIf({ a: 1, b: 2 }, { a: 0, b: false as never })).toEqual({ a: 0, b: false })
+  })
+
+  // New: shallow only (documented)
+  it('is shallow — nested objects replaced not merged', () => {
+    const result = mergeIf<Record<string, unknown>>(
+      { theme: { color: 'red', size: 12 } },
+      { theme: { color: 'blue' } }
+    )
+    expect(result.theme).toEqual({ color: 'blue' })
   })
 })
 
@@ -515,4 +664,3 @@ describe('hasOwn', () => {
     expect(hasOwn(obj, 'a')).toBe(true)
   })
 })
- 

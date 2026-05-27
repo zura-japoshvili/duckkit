@@ -1,7 +1,8 @@
 # Object
 
 ```typescript
-import { pick, omit, deepMerge, deepClone, isEqual, mapKeys, mapValues, invertObject, flattenObject, unflattenObject, filterKeys, filterValues, keys, values, entries, fromEntries } from 'duckkit/object'
+import { pick, omit, deepMerge, deepClone, isEqual, mapKeys, mapValues, invertObject, flattenObject, unflattenObject, filterKeys, filterValues, keys, values, entries, fromEntries, deepFreeze, objectDiff, mergeIf, hasOwn } from 'duckkit/object'
+import type { DeepReadonly } from 'duckkit/object'
 ```
 
 All functions are non-mutating — they always return a new object.
@@ -10,7 +11,7 @@ All functions are non-mutating — they always return a new object.
 
 ## pick
 
-Creates a new object with only the specified keys. Removed keys disappear from the type entirely.
+Creates a new object with only the specified keys. Removed keys disappear from the type entirely. Only own properties are picked. Inherited properties are skipped.
 
 ```typescript
 pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
@@ -48,7 +49,7 @@ Omitting no keys returns a copy of the full object.
 
 ## deepMerge
 
-Recursively merges two objects. Nested objects are merged, not replaced. Arrays are replaced.
+Recursively merges two objects. Nested plain objects are merged, not replaced. Arrays are replaced.
 
 ```typescript
 deepMerge<T, U>(base: T, override: U): DeepMerge<T, U>
@@ -70,11 +71,11 @@ deepMerge({ tags: [1, 2] }, { tags: [3] })
 // { tags: [3] } — not [1, 2, 3]
 ```
 
-`Date` values are preserved correctly — they are treated as leaf values, not plain objects:
+`Date`, `Map`, `Set`, `RegExp`, and class instances are treated as leaf values — `override` replaces them rather than walking into them:
 
 ```typescript
-deepMerge({ createdAt: new Date('2026-01-01') }, { updatedAt: new Date('2026-05-20') })
-// { createdAt: Date, updatedAt: Date } ✅
+deepMerge({ re: /a/ }, { re: /b/g })
+// { re: /b/g } ✅ — not a broken merge of RegExp internals
 ```
 
 If `override` has a primitive where `base` has an object, the primitive wins:
@@ -91,7 +92,7 @@ deepMerge({ a: { b: 1 } }, { a: 42 })
 > // { name: 'Zura', role: undefined } — role is cleared ⚠️
 > ```
 >
-> If you only want to merge defined values, filter them out of override first:
+> Use `mergeIf` if you want `undefined` to mean "leave alone", or filter the override first:
 >
 > ```typescript
 > deepMerge(base, filterValues(override, v => v !== undefined))
@@ -101,7 +102,7 @@ deepMerge({ a: { b: 1 } }, { a: 42 })
 
 ## deepClone
 
-Creates a true deep clone. Preserves `Date` objects — unlike `JSON.parse(JSON.stringify(...))` which converts them to strings.
+Creates a true deep clone of plain objects, arrays, dates, and primitives. Preserves `Date` — unlike `JSON.parse(JSON.stringify(...))` which converts them to strings.
 
 ```typescript
 deepClone<T>(value: T): T
@@ -118,36 +119,48 @@ clone.createdAt instanceof Date  // true ✅
 JSON.parse(JSON.stringify(original)).createdAt instanceof Date  // false ❌
 ```
 
-Handles: objects, arrays, dates, primitives, `null`, `undefined`.
+Handles: plain objects, arrays, dates, primitives, `null`, `undefined`.
 
-Does not handle: circular references, functions, class instances, `Map`, `Set`. For those cases, use the native `structuredClone()` available in Node 17+ and modern browsers.
+> **Non-plain objects pass through by reference:** `Map`, `Set`, `RegExp`, and class instances are not deep-cloned — they are returned as-is. Mutations to them will affect the original.
+>
+> ```typescript
+> const m = new Map([['a', 1]])
+> const clone = deepClone({ data: m })
+> clone.data === m  // true — same reference
+> ```
+>
+> For full fidelity, use the native `structuredClone()` (Node 17+, modern browsers).
 
-> **Symbol keys are silently dropped:** `Object.keys` does not return symbol-keyed properties, so any `Symbol`-keyed values on the original are absent from the clone with no error.
+> **Symbol keys are silently dropped:** `Object.keys` does not return symbol-keyed properties.
 >
 > ```typescript
 > const sym = Symbol('id')
 > const original = { name: 'Zura', [sym]: 42 }
-> const clone = deepClone(original)
-> clone[sym]  // undefined ❌ — symbol key is gone
+> deepClone(original)[sym]  // undefined ❌
 > ```
->
-> If you need symbol keys preserved, use `structuredClone()` instead.
+
+> **Circular references will overflow the stack.**
 
 ---
 
 ## isEqual
 
-Deep equality check. Handles primitives, objects, arrays, dates, `null`, `undefined`, and nested structures.
+Deep equality check. Handles primitives, objects, arrays, dates, regex, maps, sets, `null`, `undefined`, `NaN`, and nested structures.
 
 ```typescript
 isEqual(a: unknown, b: unknown): boolean
 ```
 
 ```typescript
-isEqual({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } })  // true
-isEqual([1, 2, 3], [1, 2, 3])                             // true
-isEqual(new Date('2026-01-01'), new Date('2026-01-01'))   // true
-isEqual(null, null)                                        // true
+isEqual({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } })   // true
+isEqual([1, 2, 3], [1, 2, 3])                            // true
+isEqual(new Date('2026-01-01'), new Date('2026-01-01'))  // true
+isEqual(null, null)                                       // true
+
+isEqual(NaN, NaN)                                         // true ✅
+isEqual(new Map([['a', 1]]), new Map([['a', 1]]))         // true ✅
+isEqual(new Set([1, 2, 3]), new Set([1, 2, 3]))           // true ✅
+isEqual(/foo/g, /foo/g)                                   // true ✅
 
 isEqual({ a: 1 }, { a: 2 })        // false
 isEqual({ a: 1 }, { a: 1, b: 2 })  // false — extra keys
@@ -155,24 +168,22 @@ isEqual(1, '1')                     // false — different types
 isEqual(null, undefined)            // false
 ```
 
-Does not handle circular references.
-
-> **`Map` and `Set` produce false positives:** Both pass the `typeof === 'object'` branch and are compared by `Object.keys`, which returns `[]` for both. Any two `Map` or `Set` instances compare as equal regardless of their contents.
+> **Prototypes are compared:** A class instance and a plain object with the same own keys are not equal.
 >
 > ```typescript
-> isEqual(new Map([['a', 1]]), new Map([['b', 2]]))  // true ❌ — wrong
-> isEqual(new Set([1, 2, 3]), new Set([4, 5, 6]))    // true ❌ — wrong
+> class User { constructor(public name: string) {} }
+> isEqual(new User('Z'), { name: 'Z' })  // false ✅
 > ```
 >
-> Same applies to `RegExp` — `/a/` and `/b/` compare as equal. Don't use `isEqual` with these types.
+> This is intentional — class instances have semantic meaning beyond their data.
 
-> **`NaN` returns `false`:** `NaN === NaN` is `false` in JavaScript, and `isEqual` doesn't special-case it.
+> **Set comparison is by `SameValueZero`, not deep equality.** Two sets containing equivalent nested objects compare as not equal unless the references match.
 >
 > ```typescript
-> isEqual(NaN, NaN)  // false ❌
+> isEqual(new Set([{ a: 1 }]), new Set([{ a: 1 }]))  // false — different references
 > ```
->
-> If you need `NaN`-safe equality, use `Object.is(a, b)` for primitives.
+
+> **Does not handle circular references.**
 
 ---
 
@@ -187,9 +198,6 @@ mapKeys<T>(obj: Record<string, T>, fn: (key: string) => string): Record<string, 
 ```typescript
 mapKeys({ first_name: 'Zura', last_name: 'J' }, k => camelCase(k))
 // { firstName: 'Zura', lastName: 'J' }
-
-mapKeys({ a: 1, b: 2 }, k => k.toUpperCase())
-// { A: 1, B: 2 }
 ```
 
 If two keys map to the same result, the last one wins.
@@ -231,7 +239,7 @@ invertObject({ admin: 'ROLE_ADMIN', user: 'ROLE_USER' })
 // { ROLE_ADMIN: 'admin', ROLE_USER: 'user' }
 ```
 
-If multiple keys have the same value, the last one wins.
+If multiple keys have the same value, the last one wins. Only string values are accepted at the type level — JavaScript would coerce other types to strings when used as keys anyway, but the type forces you to convert explicitly.
 
 ---
 
@@ -251,14 +259,15 @@ flattenObject({ user: { name: 'Zura', address: { city: 'Tbilisi' } } })
 // { 'user.name': 'Zura', 'user.address.city': 'Tbilisi' }
 ```
 
-Arrays are treated as leaf values — they are not flattened:
+Only plain objects are recursed into. Arrays, Dates, Maps, Sets, RegExp, and class instances are kept as leaf values:
 
 ```typescript
-flattenObject({ a: { b: [1, 2, 3] } })
-// { 'a.b': [1, 2, 3] }
+flattenObject({ a: { b: [1, 2, 3] } })       // { 'a.b': [1, 2, 3] }
+flattenObject({ createdAt: new Date() })      // { createdAt: Date } ✅
+flattenObject({ a: {}, b: 1 })                // { a: {}, b: 1 } ✅ — empty kept
 ```
 
-> **Keys containing dots break the round-trip with `unflattenObject`:** A key like `'a.b'` is indistinguishable from a nested `{ a: { b: ... } }` after flattening — both become `'a.b'`. Restoring via `unflattenObject` will produce the nested structure, not the original flat key.
+> **Keys containing dots break the round-trip with `unflattenObject`:** A key like `'a.b'` is indistinguishable from a nested `{ a: { b: ... } }` after flattening — both become `'a.b'`.
 >
 > ```typescript
 > const obj = { 'a.b': 1 }
@@ -267,22 +276,6 @@ flattenObject({ a: { b: [1, 2, 3] } })
 > ```
 >
 > Avoid dot characters in keys if you need the round-trip to be lossless.
-
-> **Empty nested objects are silently dropped:** An empty object `{}` is recursed into but produces no keys, so it disappears from the result entirely.
->
-> ```typescript
-> flattenObject({ a: {}, b: 1 })
-> // { b: 1 } — a is gone ⚠️
-> ```
-
-> **`Date` values are silently dropped:** Dates pass the plain-object check (`typeof date === 'object'`, not null, not array), are recursed into, and produce no keys. The date disappears from the output.
->
-> ```typescript
-> flattenObject({ createdAt: new Date() })
-> // {} ❌ — date is gone
-> ```
->
-> Convert dates to strings or timestamps before flattening if you need them preserved.
 
 ---
 
@@ -299,22 +292,21 @@ unflattenObject({ 'a.b.c': 1, 'a.d': 2, 'e': 3 })
 // { a: { b: { c: 1 }, d: 2 }, e: 3 }
 ```
 
-They are true inverses of each other (for plain objects without dot keys, empty objects, or Date values):
+Keys containing `__proto__`, `constructor`, or `prototype` segments are skipped entirely to prevent prototype pollution:
 
 ```typescript
-const original = { user: { name: 'Zura', address: { city: 'Tbilisi' } } }
-unflattenObject(flattenObject(original))
-// deep equals original ✅
+unflattenObject({ '__proto__.polluted': true })
+// {} — key skipped, Object.prototype unchanged ✅
 ```
 
-> **Conflicting paths silently overwrite:** If a key and a dotted path starting with that key both exist, the primitive is replaced by the nested object with no error.
+This makes the function safe to use on untrusted input.
+
+> **Conflicting paths silently overwrite:** If a key and a dotted path starting with that key both exist, the primitive is replaced by the nested object.
 >
 > ```typescript
 > unflattenObject({ 'a': 1, 'a.b': 2 })
-> // { a: { b: 2 } } — a: 1 is lost ❌
+> // { a: { b: 2 } } — a: 1 is lost ⚠️
 > ```
->
-> Ensure your flat keys don't have both `'x'` and `'x.y'` present at the same time.
 
 ---
 
@@ -329,11 +321,9 @@ filterKeys<T>(obj: Record<string, T>, predicate: (key: string) => boolean): Reco
 ```typescript
 filterKeys({ _id: 1, name: 'Zura', _internal: 2 }, k => !k.startsWith('_'))
 // { name: 'Zura' }
-
-filterKeys(config, k => allowedKeys.includes(k))
 ```
 
-Like `pick` but with a function instead of a fixed array of keys — useful when you don't know the keys upfront.
+Like `pick` but with a function instead of a fixed array of keys.
 
 ---
 
@@ -349,9 +339,6 @@ filterValues<T>(obj: Record<string, T>, predicate: (value: T, key: string) => bo
 filterValues({ a: 1, b: null, c: 3 }, v => v !== null)
 // { a: 1, c: 3 }
 
-filterValues(scores, v => v > 0)
-// only positive scores
-
 // key is available as second argument
 filterValues({ a: 1, b: 2, c: 3 }, (_, k) => k !== 'b')
 // { a: 1, c: 3 }
@@ -361,7 +348,7 @@ filterValues({ a: 1, b: 2, c: 3 }, (_, k) => k !== 'b')
 
 ## keys / values / entries / fromEntries
 
-Typed versions of the native `Object` methods. The native versions return `string[]` or `[string, T][]`, losing literal key types. These return the actual key union type.
+Typed versions of the native `Object` methods.
 
 ```typescript
 keys<T>(obj: T): (keyof T)[]
@@ -374,33 +361,13 @@ fromEntries<K extends string, V>(entries: [K, V][]): Record<K, V>
 keys({ name: 'Zura', age: 25 })
 // typed as ('name' | 'age')[] — not string[] ✅
 
-values({ name: 'Zura', age: 25 })
-// ['Zura', 25]
-
 entries({ a: 1, b: 2 })
 // [['a', 1], ['b', 2]] — typed as ['a' | 'b', number][] ✅
-
-fromEntries([['name', 'Zura'], ['age', '25']])
-// { name: 'Zura', age: '25' }
 ```
 
-`entries` and `fromEntries` are inverses:
+> **The type is a promise TypeScript can't enforce at runtime:** Due to structural typing, an object can carry more properties than its declared type. At runtime these return every own enumerable key on the object — including extras not in the type.
 
-```typescript
-fromEntries(entries(obj) as [string, number][])
-// deep equals obj ✅
-```
-
-> **The type is a promise TypeScript can't enforce at runtime:** Due to structural typing, an object can carry more properties than its declared type. `keys`, `values`, and `entries` claim to return only the keys in `T`, but at runtime they return every key actually on the object — including extras that aren't in the type.
->
-> ```typescript
-> type User = { name: string }
-> const user = { name: 'Zura', role: 'admin' } as User
->
-> keys(user)  // ['name', 'role'] at runtime — typed as ('name')[] ⚠️
-> ```
->
-> This is the same tradeoff as the native typed wrappers in every TypeScript codebase — the better types are worth it, just don't write logic that depends on the key list being exhaustive.
+---
 
 ## deepFreeze
 
@@ -414,71 +381,62 @@ deepFreeze<T extends object>(obj: T): DeepReadonly<T>
 const config = deepFreeze({ db: { host: 'localhost', port: 5432 } })
 
 config.db.port = 9999   // TypeScript error ❌ — deeply readonly
-config.db.host = 'prod' // TypeScript error ❌
 ```
 
-Returns the same object reference. Arrays are frozen too.
+Returns the same object reference. Arrays are frozen too. Already frozen objects are safe to pass.
 
-> **Only freezes own properties:** Prototype chain is not frozen.
+> **Only own string-keyed properties are visited.** Symbol-keyed values are not frozen. The prototype chain is not frozen.
 
-> **Already frozen objects are safe:** Calling `deepFreeze` on an already-frozen object does not throw.
+---
 
 ## objectDiff
 
-Returns the keys that differ between two objects. A key is included if it was added, removed, or its value changed (shallow comparison).
+Returns the keys that differ between two objects. A key is included if it was added, removed, or its value changed.
 
 ```typescript
-objectDiff<T extends Record<string, unknown>>(base: T, updated: T): string[]
+objectDiff<T, U>(base: T, updated: U): string[]
 ```
 
 ```typescript
 objectDiff({ a: 1, b: 2 }, { a: 1, b: 3, c: 4 })
-// ['b', 'c'] — b changed, c was added
+// ['b', 'c']
 
 objectDiff({ a: 1, b: 2 }, { a: 1 })
-// ['b'] — b was removed
-
-objectDiff({ a: 1 }, { a: 1 })
-// []
+// ['b']
 ```
 
-Useful for form dirty-checking, state change detection, and audit logs.
-
-> **Shallow comparison only:** Nested objects are compared by reference, not value.
+> **Shallow only:** Nested objects are compared by reference.
 >
 > ```typescript
 > const obj = { a: { b: 1 } }
-> objectDiff(obj, { a: obj.a })  // [] — same reference, no diff ⚠️
+> objectDiff(obj, { a: obj.a })  // [] — same reference, no diff
 > ```
 
+---
 
 ## mergeIf
 
 Like `deepMerge` but skips keys where the override value is `null` or `undefined`. Base values are preserved when the override has nothing meaningful to contribute.
 
 ```typescript
-mergeIf<T extends Record<string, unknown>>(base: T, override: Partial<T>): T
+mergeIf<T>(base: T, override: Partial<T>): T
 ```
 
 ```typescript
 mergeIf({ name: 'Zura', role: 'admin' }, { role: undefined, age: 25 })
 // { name: 'Zura', role: 'admin', age: 25 } — role preserved ✅
 
-mergeIf({ a: 1 }, { a: null })
-// { a: 1 } — null skipped ✅
-
 mergeIf({ a: 1 }, { a: 0 })
 // { a: 0 } — 0 is kept, only null/undefined are skipped ✅
 ```
 
-Does not mutate the base object.
-
 > **Shallow only:** Only top-level keys are processed. Nested objects are replaced, not recursively merged.
 
+---
 
 ## hasOwn
 
-Typed wrapper for `Object.hasOwn`. Returns `true` if the object has the specified key as its own property — not inherited from the prototype.
+Typed wrapper for `Object.hasOwn`. Returns `true` if the object has the specified key as its own property.
 
 ```typescript
 hasOwn<T extends object>(obj: T, key: PropertyKey): key is keyof T
@@ -486,17 +444,8 @@ hasOwn<T extends object>(obj: T, key: PropertyKey): key is keyof T
 
 ```typescript
 hasOwn({ a: 1 }, 'a')       // true
-hasOwn({ a: 1 }, 'b')       // false
 hasOwn({}, 'toString')      // false — inherited, not own
-
-const sym = Symbol('id')
-hasOwn({ [sym]: 1 }, sym)   // true ✅
+hasOwn({ [sym]: 1 }, sym)   // true — works with symbol keys ✅
 ```
 
-Safer than `obj.hasOwnProperty(key)` — works correctly even if `hasOwnProperty` has been overridden on the object.
-
-```typescript
-const obj = { hasOwnProperty: () => false, a: 1 }
-obj.hasOwnProperty('a')  // false ❌ — overridden
-hasOwn(obj, 'a')         // true  ✅ — safe
-```
+Safe even if `hasOwnProperty` has been shadowed on the object.

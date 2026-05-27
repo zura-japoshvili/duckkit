@@ -1,9 +1,9 @@
 /**
- * Recursively merges two objects. Nested objects are merged, not replaced.
+ * Recursively merges two objects. Nested plain objects are merged, not replaced.
  * Arrays and primitives in `override` always win.
  *
- * The return type is a deep merge of `T` and `U` — fully typed,
- * no `any` anywhere.
+ * Non-plain objects (Date, Map, Set, RegExp, class instances) are treated as
+ * leaf values — `override` replaces them rather than merging into them.
  *
  * @param base - The base object
  * @param override - Values to merge in (takes priority on conflicts)
@@ -22,9 +22,9 @@
  * // { tags: [3] }
  *
  * @example
- * // Date values are preserved correctly
- * deepMerge({ createdAt: new Date('2026-01-01') }, { updatedAt: new Date('2026-05-20') })
- * // { createdAt: Date, updatedAt: Date } ✅
+ * // Date, Map, Set, RegExp are treated as values
+ * deepMerge({ re: /a/ }, { re: /b/ })
+ * // { re: /b/ } ✅
  */
 type DeepMerge<T, U> = {
   [K in keyof T | keyof U]: K extends keyof U
@@ -41,12 +41,9 @@ type DeepMerge<T, U> = {
 }
 
 function isPlainObject(val: unknown): val is Record<string, unknown> {
-  return (
-    typeof val === 'object' &&
-    val !== null &&
-    !Array.isArray(val) &&
-    !(val instanceof Date)
-  )
+  if (typeof val !== 'object' || val === null) return false
+  const proto = Object.getPrototypeOf(val)
+  return proto === null || proto === Object.prototype
 }
 
 export function deepMerge<T extends object, U extends object>(

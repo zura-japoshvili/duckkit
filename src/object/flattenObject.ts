@@ -1,8 +1,8 @@
 /**
  * Flattens a nested object into a single level using dot-notation keys.
  *
- * Useful for logging, form serialization, config diffing, or
- * sending nested data to flat key-value stores.
+ * Only plain objects are recursed into. Arrays, Dates, Maps, Sets, RegExp,
+ * and class instances are kept as leaf values.
  *
  * @param obj - The object to flatten
  * @param prefix - Internal use for recursion (leave empty)
@@ -15,7 +15,23 @@
  * @example
  * flattenObject({ user: { name: 'Zura', address: { city: 'Tbilisi' } } })
  * // { 'user.name': 'Zura', 'user.address.city': 'Tbilisi' }
+ *
+ * @example
+ * // Dates are preserved as values
+ * flattenObject({ createdAt: new Date('2026-01-01') })
+ * // { createdAt: Date } ✅
+ *
+ * @example
+ * // Empty nested objects are kept
+ * flattenObject({ a: {}, b: 1 })
+ * // { a: {}, b: 1 } ✅
  */
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+  if (typeof val !== 'object' || val === null) return false
+  const proto = Object.getPrototypeOf(val)
+  return proto === null || proto === Object.prototype
+}
+
 export function flattenObject(
   obj: Record<string, unknown>,
   prefix = ''
@@ -24,8 +40,14 @@ export function flattenObject(
   for (const key of Object.keys(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key
     const value = obj[key]
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      Object.assign(result, flattenObject(value as Record<string, unknown>, fullKey))
+    if (isPlainObject(value)) {
+      const nested = flattenObject(value, fullKey)
+      if (Object.keys(nested).length === 0) {
+        // Preserve empty plain objects instead of dropping them
+        result[fullKey] = {}
+      } else {
+        Object.assign(result, nested)
+      }
     } else {
       result[fullKey] = value
     }

@@ -7,8 +7,8 @@
  * - `undefined` values
  * - Does not choke on non-serializable values
  *
- * Does not handle: circular references, functions, class instances, Map, Set.
- * For those cases, use the native `structuredClone()` available in Node 17+ and modern browsers.
+ * Non-plain objects (Map, Set, RegExp, class instances) are returned by reference.
+ * Symbol keys are dropped. For full fidelity, use the native `structuredClone()`.
  *
  * @param value - The value to clone
  * @returns A deep clone of the value
@@ -28,13 +28,18 @@
 export function deepClone<T>(value: T): T {
   if (value === null || value === undefined) return value
   if (value instanceof Date) return new Date(value.getTime()) as T
-  if (Array.isArray(value)) return value.map(deepClone) as T
+  if (Array.isArray(value)) return value.map(v => deepClone(v)) as T
   if (typeof value === 'object') {
-    const result: Record<string, unknown> = {}
-    for (const key of Object.keys(value)) {
-      result[key] = deepClone((value as Record<string, unknown>)[key])
+    const proto = Object.getPrototypeOf(value)
+    // Only deep-clone plain objects. Map, Set, RegExp, class instances pass through.
+    if (proto === null || proto === Object.prototype) {
+      const result: Record<string, unknown> = {}
+      for (const key of Object.keys(value)) {
+        result[key] = deepClone((value as Record<string, unknown>)[key])
+      }
+      return result as T
     }
-    return result as T
+    return value
   }
   return value
 }
