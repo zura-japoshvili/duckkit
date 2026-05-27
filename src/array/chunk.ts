@@ -5,8 +5,9 @@
  * The last chunk may be smaller than `size` if the array doesn't divide evenly.
  *
  * @param arr - The array to split
- * @param size - Maximum size of each chunk (must be > 0)
+ * @param size - Maximum size of each chunk (must be a positive integer)
  * @returns Array of chunks typed as `T[][]`
+ * @throws If `size` is not a positive integer (rejects 0, negatives, floats, NaN, Infinity)
  *
  * @example
  * chunk([1, 2, 3, 4, 5], 2)
@@ -19,7 +20,9 @@
  * }
  */
 export function chunk<T>(arr: T[], size: number): T[][] {
-  if (size <= 0) throw new Error('chunk size must be greater than 0')
+  if (!Number.isInteger(size) || size <= 0) {
+    throw new Error('chunk size must be a positive integer')
+  }
   const result: T[][] = []
   for (let i = 0; i < arr.length; i += size) {
     result.push(arr.slice(i, i + size))

@@ -1,9 +1,12 @@
 /**
  * Returns the item with the lowest numeric value by criteria.
  *
+ * If `fn` returns `NaN` for the first item, subsequent valid numbers will
+ * still win — NaN never poisons the comparison.
+ *
  * @param arr - The array to search
  * @param fn - Function that returns the numeric value for each item
- * @returns The item with the minimum value, or undefined if array is empty
+ * @returns The item with the minimum value, or undefined if the array is empty
  *
  * @example
  * minBy(products, x => x.price)
@@ -13,12 +16,15 @@
  * // lowest scoring player
  */
 export function minBy<T>(arr: T[], fn: (item: T) => number): T | undefined {
-  if (arr.length === 0) return undefined
+  if (!arr.length) return undefined
   let minItem = arr[0]!
   let minVal = fn(minItem)
   for (let i = 1; i < arr.length; i++) {
     const val = fn(arr[i]!)
-    if (val < minVal) { minVal = val; minItem = arr[i]! }
+    if (val < minVal || Number.isNaN(minVal)) {
+      minVal = val
+      minItem = arr[i]!
+    }
   }
   return minItem
 }

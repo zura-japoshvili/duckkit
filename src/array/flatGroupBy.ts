@@ -2,6 +2,7 @@
  * Groups array items by multiple keys per item.
  *
  * Unlike `groupBy`, each item can appear under several keys simultaneously.
+ * Returns `Partial<Record<K, T[]>>` so missing keys read as `undefined`.
  *
  * Perfect for tags, genres, categories — anything where one item
  * belongs to multiple groups at once.
@@ -22,18 +23,18 @@
  * //   rock:        [ArcticMonkeys],
  * // }
  */
-export function flatGroupBy<T>(
+export function flatGroupBy<T, K extends string>(
   arr: T[],
-  fn: (item: T) => string[]
-): Record<string, T[]> {
-  const result: Record<string, T[]> = {}
+  fn: (item: T) => K[]
+): Partial<Record<K, T[]>> {
+  const result = {} as Partial<Record<K, T[]>>
   for (const item of arr) {
     const keys = fn(item)
     for (const key of keys) {
       if (!result[key]) {
         result[key] = []
       }
-      result[key].push(item)
+      result[key]!.push(item)
     }
   }
   return result

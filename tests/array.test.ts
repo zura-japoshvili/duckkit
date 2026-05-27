@@ -64,6 +64,22 @@ describe('minBy', () => {
     const arr = [{ v: 1, name: 'a' }, { v: 1, name: 'b' }]
     expect(minBy(arr, x => x.v)?.name).toBe('a')
   })
+
+  // NaN-safe behavior
+  it('NaN as first item does not poison the result', () => {
+    const arr = [{ v: NaN }, { v: 5 }, { v: 3 }]
+    expect(minBy(arr, x => x.v)).toEqual({ v: 3 })
+  })
+
+  it('skips NaN values when valid numbers exist', () => {
+    const arr = [{ v: 5 }, { v: NaN }, { v: 1 }, { v: NaN }, { v: 10 }]
+    expect(minBy(arr, x => x.v)).toEqual({ v: 1 })
+  })
+
+  it('all NaN returns some item — choice is arbitrary but defined', () => {
+    const arr = [{ v: NaN }, { v: NaN }]
+    expect(minBy(arr, x => x.v)).toBeDefined()
+  })
 })
 
 describe('maxBy', () => {
@@ -88,6 +104,22 @@ describe('maxBy', () => {
   it('returns first item on tie', () => {
     const arr = [{ v: 5, name: 'a' }, { v: 5, name: 'b' }]
     expect(maxBy(arr, x => x.v)?.name).toBe('a')
+  })
+
+  // NaN-safe behavior
+  it('NaN as first item does not poison the result', () => {
+    const arr = [{ v: NaN }, { v: 5 }, { v: 3 }]
+    expect(maxBy(arr, x => x.v)).toEqual({ v: 5 })
+  })
+
+  it('skips NaN values when valid numbers exist', () => {
+    const arr = [{ v: 1 }, { v: NaN }, { v: 10 }, { v: NaN }, { v: 5 }]
+    expect(maxBy(arr, x => x.v)).toEqual({ v: 10 })
+  })
+
+  it('all NaN returns some item — choice is arbitrary but defined', () => {
+    const arr = [{ v: NaN }, { v: NaN }]
+    expect(maxBy(arr, x => x.v)).toBeDefined()
   })
 })
 
@@ -148,7 +180,7 @@ describe('groupBy', () => {
   })
 
   it('handles empty array', () => {
-    expect(groupBy([], x => x)).toEqual({})
+    expect(groupBy([], x => x as string)).toEqual({})
   })
 
   it('all items share the same key', () => {
@@ -168,6 +200,15 @@ describe('groupBy', () => {
     const result = groupBy([{ role: 'admin' }], x => x.role)
     expect(result['admin']).toHaveLength(1)
   })
+
+  // Partial<Record> type — missing keys are undefined at runtime
+  it('missing key returns undefined, not empty array', () => {
+    type Status = 'active' | 'banned'
+    const users = [{ status: 'active' as Status }]
+    const grouped = groupBy(users, x => x.status)
+    expect(grouped.active).toHaveLength(1)
+    expect(grouped.banned).toBeUndefined()
+  })
 })
 
 describe('flatGroupBy', () => {
@@ -183,7 +224,7 @@ describe('flatGroupBy', () => {
   })
 
   it('handles empty array', () => {
-    expect(flatGroupBy([], x => [])).toEqual({})
+    expect(flatGroupBy([] as { tags: string[] }[], x => x.tags)).toEqual({})
   })
 
   it('item with no keys is excluded from all groups', () => {
@@ -204,6 +245,14 @@ describe('flatGroupBy', () => {
     const result = flatGroupBy(items, x => x.tags)
     expect(result['x']).toHaveLength(2)
   })
+
+  // Partial<Record> type
+  it('missing key returns undefined, not empty array', () => {
+    const items = [{ tags: ['a'] }]
+    const result = flatGroupBy(items, x => x.tags)
+    expect(result['a']).toHaveLength(1)
+    expect(result['nonexistent']).toBeUndefined()
+  })
 })
 
 describe('chunk', () => {
@@ -215,8 +264,24 @@ describe('chunk', () => {
     expect(chunk([1, 2, 3, 4], 2)).toEqual([[1, 2], [3, 4]])
   })
 
-  it('throws on size <= 0', () => {
+  it('throws on size 0', () => {
     expect(() => chunk([1, 2], 0)).toThrow()
+  })
+
+  it('throws on negative size', () => {
+    expect(() => chunk([1, 2, 3], -1)).toThrow()
+  })
+
+  it('throws on non-integer size', () => {
+    expect(() => chunk([1, 2, 3], 1.5)).toThrow()
+  })
+
+  it('throws on NaN size', () => {
+    expect(() => chunk([1, 2, 3], NaN)).toThrow()
+  })
+
+  it('throws on Infinity size', () => {
+    expect(() => chunk([1, 2, 3], Infinity)).toThrow()
   })
 
   it('handles empty array', () => {
@@ -287,7 +352,7 @@ describe('topBy', () => {
   })
 
   it('handles empty array', () => {
-    expect(topBy([], x => x, 3)).toEqual([])
+    expect(topBy([] as { v: number }[], x => x.v, 3)).toEqual([])
   })
 
   it('handles ties in sort key', () => {
@@ -379,7 +444,7 @@ describe('sumBy', () => {
   })
 
   it('returns 0 for empty array', () => {
-    expect(sumBy([], x => x)).toBe(0)
+    expect(sumBy([] as number[], x => x)).toBe(0)
   })
 
   it('works with computed values', () => {
@@ -396,25 +461,33 @@ describe('sumBy', () => {
 describe('countBy', () => {
   it('counts by string key', () => {
     const users = [
-      { country: 'GE' },
-      { country: 'US' },
-      { country: 'GE' },
-      { country: 'GE' },
+      { country: 'GE' as const },
+      { country: 'US' as const },
+      { country: 'GE' as const },
+      { country: 'GE' as const },
     ]
     expect(countBy(users, x => x.country)).toEqual({ GE: 3, US: 1 })
   })
 
   it('handles empty array', () => {
-    expect(countBy([], x => x)).toEqual({})
+    expect(countBy([] as { k: string }[], x => x.k)).toEqual({})
   })
 
   it('all items same key', () => {
-    expect(countBy([1, 2, 3], () => 'all')).toEqual({ all: 3 })
+    expect(countBy([1, 2, 3], () => 'all' as const)).toEqual({ all: 3 })
   })
 
   it('each item unique key', () => {
     const result = countBy(['a', 'b', 'c'], x => x)
     expect(result).toEqual({ a: 1, b: 1, c: 1 })
+  })
+
+  // Partial<Record> type
+  it('missing key returns undefined — guard with ?? 0', () => {
+    const result = countBy([{ k: 'a' as const }], x => x.k)
+    expect(result.a).toBe(1)
+    const safe = result.a ?? 0
+    expect(safe).toBe(1)
   })
 })
 
@@ -517,6 +590,12 @@ describe('flatten', () => {
     expect(flatten([[1, 2, 3]])).toEqual([1, 2, 3])
   })
 
+  // Regression: spread-based concat overflows on large inputs.
+  it('does not stack-overflow on large arrays', () => {
+    const big = Array.from({ length: 50_000 }, (_, i) => [i])
+    expect(() => flatten(big)).not.toThrow()
+    expect(flatten(big)).toHaveLength(50_000)
+  })
 })
 
 describe('range', () => {
@@ -573,24 +652,32 @@ describe('sample', () => {
 
 describe('keyBy', () => {
   it('keys by string field', () => {
-    const users = [{ id: '1', name: 'Zura' }, { id: '2', name: 'Alice' }]
+    const users = [{ id: '1' as const, name: 'Zura' }, { id: '2' as const, name: 'Alice' }]
     const result = keyBy(users, x => x.id)
     expect(result['1']?.name).toBe('Zura')
     expect(result['2']?.name).toBe('Alice')
   })
 
   it('handles empty array', () => {
-    expect(keyBy([], x => x)).toEqual({})
+    expect(keyBy([] as { id: string }[], x => x.id)).toEqual({})
   })
 
   it('last item wins on duplicate keys', () => {
-    const users = [{ id: '1', name: 'Zura' }, { id: '1', name: 'Other' }]
+    const users = [{ id: '1' as const, name: 'Zura' }, { id: '1' as const, name: 'Other' }]
     expect(keyBy(users, x => x.id)['1']?.name).toBe('Other')
   })
 
   it('result has correct number of keys', () => {
     const items = [{ k: 'a' }, { k: 'b' }, { k: 'c' }]
     expect(Object.keys(keyBy(items, x => x.k))).toHaveLength(3)
+  })
+
+  // Partial<Record> type
+  it('missing key returns undefined', () => {
+    const result = keyBy([{ id: '1' as const }], x => x.id)
+    expect(result['1']).toBeDefined()
+    // missing key — TypeScript also forces optional chaining
+    expect((result as Record<string, unknown>)['nonexistent']).toBeUndefined()
   })
 })
 

@@ -1,8 +1,10 @@
 /**
  * Groups array items by a key returned from `fn`.
  *
- * Instead of `Dictionary<T[]>` (which is essentially `any`), this returns a properly typed `Record<K, T[]>`  .
- * If `fn` returns a literal union, TypeScript will infer all possible keys.
+ * Returns `Partial<Record<K, T[]>>` — only keys that actually appear in
+ * the input are present at runtime, so accessing a missing key gives
+ * `undefined` rather than an empty array. The type forces you to guard
+ * with `?.` or `??`.
  *
  * @param arr - The array to group
  * @param fn - Function that returns the group key for each item
@@ -12,18 +14,23 @@
  * const users = [{ name: 'Zura', country: 'GE' }, { name: 'Alice', country: 'US' }]
  * groupBy(users, x => x.country)
  * // { GE: [{ name: 'Zura', ... }], US: [{ name: 'Alice', ... }] }
+ *
+ * @example
+ * // Accessing absent keys is safe with optional chaining
+ * const grouped = groupBy(users, x => x.status as 'active' | 'banned')
+ * grouped.banned?.length ?? 0
  */
 export function groupBy<T, K extends string>(
   arr: T[],
   fn: (item: T) => K
-): Record<K, T[]> {
-  const result = {} as Record<K, T[]>
+): Partial<Record<K, T[]>> {
+  const result = {} as Partial<Record<K, T[]>>
   for (const item of arr) {
     const key = fn(item)
     if (!result[key]) {
       result[key] = []
     }
-    result[key].push(item)
+    result[key]!.push(item)
   }
   return result
 }

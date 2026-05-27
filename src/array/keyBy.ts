@@ -1,6 +1,10 @@
 /**
  * Converts an array into an object keyed by a derived value.
  *
+ * Returns `Partial<Record<K, T>>` — only keys produced by `fn` are present.
+ * Accessing a key that wasn't in the input gives `undefined`, not an
+ * empty value.
+ *
  * Useful for turning a list into a lookup map — O(1) access by key
  * instead of O(n) `.find()` every time.
  *
@@ -14,10 +18,13 @@
  *
  * @example
  * const byId = keyBy(products, x => x.id)
- * byId['abc123']  // instant lookup ✅
+ * byId['abc123']?.price  // safe optional access ✅
  */
-export function keyBy<T>(arr: T[], fn: (item: T) => string): Record<string, T> {
-  const result: Record<string, T> = {}
+export function keyBy<T, K extends string>(
+  arr: T[],
+  fn: (item: T) => K
+): Partial<Record<K, T>> {
+  const result = {} as Partial<Record<K, T>>
   for (const item of arr) {
     result[fn(item)] = item
   }

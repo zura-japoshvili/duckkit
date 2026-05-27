@@ -8,10 +8,12 @@ import { groupBy, partition, sortBy, chunk, ... } from 'duckkit/array'
 
 ## groupBy
 
-Groups an array by a key. Returns properly typed `Record<K, T[]>` — not `Record<string, any>`.
+Groups an array by a key. Returns `Partial<Record<K, T[]>>` — only keys that
+appeared in the data are present at runtime, so accessing a missing key gives
+`undefined`. TypeScript forces you to guard with `?.` or `??`.
 
 ```typescript
-groupBy<T, K extends string>(arr: T[], fn: (item: T) => K): Record<K, T[]>
+groupBy<T, K extends string>(arr: T[], fn: (item: T) => K): Partial<Record<K, T[]>>
 ```
 
 ```typescript
@@ -24,42 +26,28 @@ const users = [
 const grouped = groupBy(users, x => x.country)
 // { GE: User[], US: User[] }
 
-grouped.GE[0].name  // string ✅ — not any
+grouped.GE?.[0]?.name   // string ✅ — TypeScript forces optional access
+grouped.banned?.length  // safe — undefined if no banned users
 ```
 
-> **Type safety gotcha:** The return type `Record<K, T[]>` tells TypeScript every key of `K` is present. But at runtime, only keys that actually appear in the array exist — accessing an absent key returns `undefined`, not an empty array.
->
-> ```typescript
-> type Status = 'active' | 'inactive' | 'banned'
-> const grouped = groupBy(users, x => x.status as Status)
->
-> grouped.banned        // TypeScript: T[] ✅
-> grouped.banned[0]     // Runtime: TypeError if no banned users exist ❌
-> ```
->
-> Always guard before accessing, or cast the return type:
->
-> ```typescript
-> grouped.banned?.length
->
-> // or be explicit about optionality
-> groupBy(...) as Partial<Record<Status, User[]>>
-> ```
+The type honestly reflects runtime: if your iteratee returns a literal union
+like `'active' | 'banned'`, only the keys actually produced are populated.
 
 ---
 
 ## flatGroupBy
 
-Like `groupBy` but each item can belong to multiple groups. Returns `Record<string, T[]>`.
+Like `groupBy` but each item can belong to multiple groups. Returns
+`Partial<Record<K, T[]>>` for the same reason.
 
 ```typescript
-flatGroupBy<T>(arr: T[], fn: (item: T) => string[]): Record<string, T[]>
+flatGroupBy<T, K extends string>(arr: T[], fn: (item: T) => K[]): Partial<Record<K, T[]>>
 ```
 
 ```typescript
 const artists = [
-  { name: 'Gorillaz', genres: ['alternative', 'electronic'] },
-  { name: 'Arctic Monkeys', genres: ['rock', 'alternative'] },
+  { name: 'Gorillaz', genres: ['alternative', 'electronic'] as const },
+  { name: 'Arctic Monkeys', genres: ['rock', 'alternative'] as const },
 ]
 
 flatGroupBy(artists, a => a.genres)
@@ -70,7 +58,8 @@ flatGroupBy(artists, a => a.genres)
 // }
 ```
 
-Items with no keys are excluded from all groups. Useful for tags, genres, categories.
+Items with no keys are excluded from all groups. Useful for tags, genres,
+categories — anything where one item belongs to multiple buckets.
 
 ---
 
@@ -122,7 +111,8 @@ If `n` exceeds the array length, returns all items sorted. `n = 0` returns empty
 
 ## minBy / maxBy
 
-Returns the item with the lowest or highest value. Returns `undefined` for empty arrays.
+Returns the item with the lowest or highest value. Returns `undefined` for
+empty arrays.
 
 ```typescript
 minBy<T>(arr: T[], fn: (item: T) => number): T | undefined
@@ -132,10 +122,13 @@ maxBy<T>(arr: T[], fn: (item: T) => number): T | undefined
 ```typescript
 minBy(products, x => x.price)  // cheapest product
 maxBy(players, x => x.score)   // highest scoring player
-minBy([], x => x.v)            // undefined ✅ — safe on empty arrays
+minBy([], x => x.v)            // undefined ✅
 ```
 
-On ties, returns the first matching item.
+On ties, returns the first matching item. `NaN` values are skipped — if `fn`
+returns `NaN` for some items, valid numbers still win the comparison. Without
+this, a `NaN` (especially in the first item) would poison every later
+comparison and return the wrong result.
 
 ---
 
@@ -174,7 +167,9 @@ for (const batch of chunk(emails, 50)) {
 }
 ```
 
-Throws if `size <= 0`.
+`size` must be a positive integer. Throws on `0`, negatives, floats, `NaN`,
+and `Infinity` — previously these silently produced garbage chunks or empty
+arrays.
 
 ---
 
@@ -226,7 +221,7 @@ Object.fromEntries(zip(keys, values))  // quick object from two arrays
 
 ## flatten
 
-Flattens an array one level deep.
+Flattens an array one level deep. Backed by the native `Array.prototype.flat()` — safe on arrays of any size.
 
 ```typescript
 flatten<T>(arr: T[][]): T[]
@@ -237,7 +232,7 @@ flatten([[1, 2], [3, 4], [5]])  // [1, 2, 3, 4, 5]
 flatten(users.map(u => u.tags)) // all tags in one array
 ```
 
-Only flattens one level. For deeper nesting use native `Array.flat(depth)`.
+For deeper nesting, use the native method directly: `arr.flat(depth)` or `arr.flat(Infinity)`.
 
 ---
 
@@ -375,6 +370,14 @@ intersection(usersA, usersB, x => x.id)
 
 Order of the first array is preserved.
 
+> **Duplicates in `a` are preserved.** `intersection([1, 1, 2], [1, 2])` returns
+> `[1, 1, 2]` — the function filters `a` against the set built from `b` without
+> deduplicating `a`. If you want unique results, wrap with `unique`:
+>
+> ```typescript
+> unique(intersection(a, b))
+> ```
+
 ---
 
 ## difference
@@ -392,6 +395,8 @@ difference(allUsers, activeUsers, x => x.id)
 // users that are not active
 ```
 
+Same as `intersection`: duplicates in `a` are preserved. Wrap with `unique` if you need them removed.
+
 ---
 
 ## countBy
@@ -399,7 +404,7 @@ difference(allUsers, activeUsers, x => x.id)
 Groups items by a key and returns counts instead of arrays.
 
 ```typescript
-countBy<T>(arr: T[], fn: (item: T) => string): Record<string, number>
+countBy<T, K extends string>(arr: T[], fn: (item: T) => K): Partial<Record<K, number>>
 ```
 
 ```typescript
@@ -410,13 +415,12 @@ countBy(orders, x => x.status)
 // { pending: 4, shipped: 12, delivered: 8 }
 ```
 
-> **Empty array:** Returns `{}`, not `0` or `null`. Guard with `??` if you need a fallback count.
+> **Use `?? 0` when you need a number.** Reading a missing key returns
+> `undefined`, not `0`. Adding to `undefined` produces `NaN`.
 >
 > ```typescript
-> countBy([], x => x.country)  // {}
->
 > const counts = countBy(users, x => x.country)
-> const geCount = counts.GE ?? 0
+> const ge = counts.GE ?? 0
 > ```
 
 ---
@@ -426,12 +430,12 @@ countBy(orders, x => x.status)
 Converts an array into an object keyed by a derived value. O(1) lookup instead of O(n) `.find()`.
 
 ```typescript
-keyBy<T>(arr: T[], fn: (item: T) => string): Record<string, T>
+keyBy<T, K extends string>(arr: T[], fn: (item: T) => K): Partial<Record<K, T>>
 ```
 
 ```typescript
 const byId = keyBy(users, x => x.id)
-byId['abc123']  // instant lookup ✅ — no .find() needed
+byId['abc123']?.name  // safe optional access ✅
 ```
 
 On duplicate keys, last item wins.
@@ -454,3 +458,5 @@ sumBy(cart, x => x.price * x.quantity)       // cart total
 ```
 
 Returns 0 for empty arrays.
+
+> **Floating-point math:** Standard JS precision applies. `sum([0.1, 0.2])` is `0.30000000000000004`, not `0.3`. Use `.toFixed()` or multiply-round-divide if you need clean decimals.
