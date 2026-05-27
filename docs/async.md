@@ -127,7 +127,21 @@ const calculate = memo((n: number) => n * n * n, { maxSize: 100 })
 // cache never grows beyond 100 entries ✅
 ```
 
+`maxSize` must be a positive integer. `0`, negative numbers, and floats throw at construction time. Omit the option entirely for an unbounded cache.
+
 For async functions, use `memoAsync` instead.
+
+> **`JSON.stringify` limits the keying:** Calls throw on circular references and `BigInt` args.
+>
+> ```typescript
+> const fn = memo((x: bigint) => x * 2n)
+> fn(5n)  // TypeError: Do not know how to serialize a BigInt ❌
+>
+> const obj: any = {}; obj.self = obj
+> memo(g)(obj)  // TypeError: cyclic object value ❌
+> ```
+>
+> If you need these, key the cache yourself with a different key function or use a `Map` directly.
 
 > **`null` and `undefined` args collide:** `JSON.stringify([undefined])` and `JSON.stringify([null])` both produce `'[null]'`, so `fn(undefined)` and `fn(null)` share the same cache key.
 >
@@ -136,8 +150,16 @@ For async functions, use `memoAsync` instead.
 > fn(null)       // runs — cached under '[null]'
 > fn(undefined)  // cache hit — returns 'default' even though fn(undefined) was never called ❌
 > ```
+
+> **Object key order matters:** `{a: 1, b: 2}` and `{b: 2, a: 1}` are semantically equal but produce different cache keys. The second call will miss the cache where you'd expect a hit.
+
+> **Functions, symbols, and inner `undefined` are dropped:** `JSON.stringify` silently omits these when serializing objects, leading to collisions when the dropped value is the only difference.
 >
-> Avoid `null` and `undefined` as args if they need to produce different results.
+> ```typescript
+> const fn = memo((opt: { cb: () => void }) => ...)
+> fn({ cb: A })  // key '{}'
+> fn({ cb: B })  // key '{}' — same cache entry, A's result returned ❌
+> ```
 
 ---
 
@@ -162,14 +184,14 @@ await Promise.all([getUser('123'), getUser('123')])
 
 If the async function rejects, the cache entry is deleted so the next call retries instead of returning a cached rejection.
 
-Use `maxSize` to cap memory usage. Oldest entry is evicted when the limit is reached:
+Use `maxSize` to cap memory usage. Same rules as `memo` — must be a positive integer or omitted.
 
 ```typescript
 const getUser = memoAsync(fetchUser, { maxSize: 200 })
 // safe for long-running apps — cache stays bounded ✅
 ```
 
-> **Same `null`/`undefined` collision as `memo`** — see notes above.
+> **Same `JSON.stringify` limits as `memo`** — circular references and BigInt args throw, `null`/`undefined` collide, object key order matters, inner functions/symbols are dropped. See `memo` for details.
 
 ---
 
@@ -193,6 +215,16 @@ Every new call resets the timer. Only the args from the last call are used when 
 
 > **No cancel or flush:** There is no `.cancel()` to clear a pending call or `.flush()` to fire it immediately. If you need either, implement them on top or use a library like lodash that includes them.
 
+> **`this` is not preserved:** The returned wrapper is an arrow function — `this` is captured lexically at the call to `debounce`, not at the call to the wrapper. If you debounce a method that uses `this`, bind it first or wrap manually:
+>
+> ```typescript
+> // wrong — `this` inside doSomething is whatever debounce was called with
+> obj.handler = debounce(obj.doSomething, 200)
+>
+> // right — bind first
+> obj.handler = debounce(obj.doSomething.bind(obj), 200)
+> ```
+
 ---
 
 ## throttle
@@ -215,6 +247,8 @@ Unlike `debounce`, throttle guarantees the function fires right away and at a st
 
 > **Return value is always `void`:** Same as `debounce` — the throttled wrapper can't return the original function's value.
 
+> **`this` is not preserved:** Same as `debounce` — bind the method first if `this` matters.
+
 ---
 
 ## retry
@@ -229,13 +263,18 @@ retry<T>(fn: () => Promise<T>, times?: number, delayMs?: number, backoff?: boole
 // 3 attempts, 1s between each
 const data = await retry(() => fetchUser(id), 3, 1000)
 
-// exponential backoff — 200ms, 400ms, 800ms
+// exponential backoff — waits 200ms then 400ms between 3 attempts
 await retry(() => fetchData(), 3, 200, true)
+
+// 4 attempts with exponential backoff — waits 200ms, 400ms, 800ms
+await retry(() => fetchData(), 4, 200, true)
 ```
 
 Defaults to 3 attempts with no delay. Stops and returns on first success. Throws the last error if all attempts fail. Non-Error throws are wrapped in `Error`.
 
-> **`fn` is called up to `times` total — not `times` retries:** `times = 3` means 3 attempts (1 original + 2 retries), not 3 retries on top of the original call.
+`times` must be a positive integer (>= 1). Throws on `0`, negatives, floats, and `NaN`.
+
+> **`fn` is called up to `times` total — not `times` retries:** `times = 3` means 3 attempts (1 original + 2 retries) and 2 delays between them. The doubled delay value computed after the final wait is never used.
 
 > **Only retry idempotent operations:** `retry` has no way to know whether a failed call had side effects. Retrying a non-idempotent operation (e.g. a payment, an email send) may execute it multiple times. Make sure the underlying operation is safe to repeat.
 
@@ -381,9 +420,9 @@ const results = await parallel(
 
 Results are returned in the same order as the tasks, regardless of completion order. Without a concurrency limit, behaves like `Promise.all`.
 
-> **One rejection stops the queue but running tasks continue:** If a task rejects, the error propagates immediately — but any tasks already in-flight finish on their own. Tasks not yet started are never run. Same behavior as `Promise.all`.
+`concurrency` must be a positive integer (>= 1) when provided. Throws on `0`, negative numbers, and floats. Omit the option entirely for unlimited concurrency.
 
-> **`concurrency` must be a positive integer:** `concurrency: 0` is treated as no limit (falls back to `Promise.all`). Negative values produce no workers and all tasks are skipped, returning an array of `undefined`. Always pass a value `>= 1` when using the concurrency option.
+> **One rejection stops the queue but running tasks continue:** If a task rejects, the error propagates immediately — but any tasks already in-flight finish on their own. Tasks not yet started are never run. Same behavior as `Promise.all`.
 
 ---
 

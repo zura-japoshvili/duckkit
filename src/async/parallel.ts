@@ -6,8 +6,9 @@
  * preventing API rate limit hits or memory spikes on large batches.
  *
  * @param tasks - Array of async functions to run
- * @param options - Optional `{ concurrency: number }`
+ * @param options - Optional `{ concurrency: number }`. If provided, must be a positive integer.
  * @returns Array of results in the same order as tasks
+ * @throws If `concurrency` is provided and is not a positive integer
  *
  * @example
  * // all at once
@@ -26,7 +27,13 @@ export async function parallel<T>(
 ): Promise<T[]> {
   const { concurrency } = options
 
-  if (!concurrency || concurrency >= tasks.length) {
+  if (concurrency !== undefined) {
+    if (!Number.isInteger(concurrency) || concurrency < 1) {
+      throw new Error('parallel: concurrency must be a positive integer')
+    }
+  }
+
+  if (concurrency === undefined || concurrency >= tasks.length) {
     return Promise.all(tasks.map(t => t()))
   }
 

@@ -78,6 +78,46 @@ describe('retry', () => {
   })
 })
 
+describe('retry — validation', () => {
+  it('throws on times = 0', async () => {
+    await expect(retry(async () => 1, 0)).rejects.toThrow(/positive integer/)
+  })
+ 
+  it('throws on negative times', async () => {
+    await expect(retry(async () => 1, -1)).rejects.toThrow(/positive integer/)
+  })
+ 
+  it('throws on non-integer times', async () => {
+    await expect(retry(async () => 1, 1.5)).rejects.toThrow(/positive integer/)
+  })
+ 
+  it('throws on NaN times', async () => {
+    await expect(retry(async () => 1, NaN)).rejects.toThrow(/positive integer/)
+  })
+})
+ 
+describe('retry — backoff delay sequence', () => {
+  it('with times=3 and backoff, waits delayMs then delayMs*2 between attempts', async () => {
+    const delays: number[] = []
+    let lastTime = Date.now()
+    let attempt = 0
+ 
+    const fn = vi.fn(async () => {
+      const now = Date.now()
+      if (attempt > 0) delays.push(now - lastTime)
+      lastTime = now
+      attempt++
+      throw new Error('always fails')
+    })
+ 
+    await expect(retry(fn, 3, 50, true)).rejects.toThrow('always fails')
+    expect(fn).toHaveBeenCalledTimes(3)
+    expect(delays).toHaveLength(2)
+    // Allow timer slack — just confirm the second delay is roughly double
+    expect(delays[1]!).toBeGreaterThan(delays[0]! * 1.5)
+  })
+})
+
 describe('timeout', () => {
   it('resolves if promise wins', async () => {
     const result = await timeout(Promise.resolve(42), 1000)
@@ -289,6 +329,96 @@ describe('memo', () => {
   })
 })
 
+describe('memo — maxSize validation', () => {
+  it('throws on maxSize = 0', () => {
+    expect(() => memo((x: number) => x, { maxSize: 0 })).toThrow(/positive integer/)
+  })
+ 
+  it('throws on negative maxSize', () => {
+    expect(() => memo((x: number) => x, { maxSize: -1 })).toThrow(/positive integer/)
+  })
+ 
+  it('throws on non-integer maxSize', () => {
+    expect(() => memo((x: number) => x, { maxSize: 1.5 })).toThrow(/positive integer/)
+  })
+ 
+  it('accepts omitted maxSize — unbounded', () => {
+    const fn = memo((x: number) => x * 2)
+    expect(fn(1)).toBe(2)
+    expect(fn(2)).toBe(4)
+  })
+ 
+  it('evicts oldest entry when maxSize is exceeded', () => {
+    const inner = vi.fn((x: number) => x * 2)
+    const fn = memo(inner, { maxSize: 2 })
+ 
+    fn(1) // cache: {1}
+    fn(2) // cache: {1, 2}
+    fn(3) // cache: {2, 3} — 1 evicted
+    fn(1) // cache miss — inner called again
+ 
+    expect(inner).toHaveBeenCalledTimes(4)
+  })
+})
+
+describe('memo — documented limitations', () => {
+  it('throws on BigInt args (JSON.stringify limitation)', () => {
+    const fn = memo((x: bigint) => x * 2n)
+    expect(() => fn(5n)).toThrow()
+  })
+ 
+  it('null and undefined args collide on cache key', () => {
+    const inner = vi.fn((x: string | null | undefined) => x ?? 'default')
+    const fn = memo(inner)
+ 
+    fn(null)        // runs
+    fn(undefined)   // cache hit (collision)
+ 
+    expect(inner).toHaveBeenCalledTimes(1)
+  })
+ 
+  it('object key order produces different cache entries', () => {
+    const inner = vi.fn((opts: Record<string, number>) => Object.values(opts).reduce((a, b) => a + b, 0))
+    const fn = memo(inner)
+ 
+    fn({ a: 1, b: 2 })
+    fn({ b: 2, a: 1 })  // semantically equal, different key
+ 
+    expect(inner).toHaveBeenCalledTimes(2)
+  })
+})
+ 
+describe('memoAsync — rejected promise removes cache entry', () => {
+  it('next call after rejection retries instead of returning cached error', async () => {
+    let attempt = 0
+    const inner = vi.fn(async () => {
+      attempt++
+      if (attempt === 1) throw new Error('first fails')
+      return 'success'
+    })
+ 
+    const fn = memoAsync(inner)
+ 
+    await expect(fn()).rejects.toThrow('first fails')
+    const result = await fn()  // should retry, not return cached error
+    expect(result).toBe('success')
+    expect(inner).toHaveBeenCalledTimes(2)
+  })
+ 
+  it('concurrent calls share one in-flight promise', async () => {
+    const inner = vi.fn(async () => {
+      await new Promise(r => setTimeout(r, 50))
+      return 'result'
+    })
+ 
+    const fn = memoAsync(inner)
+    const results = await Promise.all([fn(), fn(), fn()])
+ 
+    expect(results).toEqual(['result', 'result', 'result'])
+    expect(inner).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('debounce', () => {
   it('delays execution', () => {
     vi.useFakeTimers()
@@ -435,6 +565,24 @@ describe('memoAsync', () => {
   })
 })
 
+describe('memoAsync — maxSize validation', () => {
+  it('throws on maxSize = 0', () => {
+    expect(() => memoAsync(async (x: number) => x, { maxSize: 0 }))
+      .toThrow(/positive integer/)
+  })
+ 
+  it('throws on negative maxSize', () => {
+    expect(() => memoAsync(async (x: number) => x, { maxSize: -1 }))
+      .toThrow(/positive integer/)
+  })
+ 
+  it('throws on non-integer maxSize', () => {
+    expect(() => memoAsync(async (x: number) => x, { maxSize: 1.5 }))
+      .toThrow(/positive integer/)
+  })
+})
+ 
+
 describe('defer', () => {
   it('resolves with the given value', async () => {
     const d = defer<number>()
@@ -505,6 +653,33 @@ describe('parallel', () => {
     const fn = vi.fn().mockResolvedValue('ok')
     await parallel([fn, fn, fn])
     expect(fn).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('parallel — concurrency validation', () => {
+  it('throws on negative concurrency', async () => {
+    await expect(parallel([async () => 1], { concurrency: -1 }))
+      .rejects.toThrow(/positive integer/)
+  })
+ 
+  it('throws on concurrency = 0', async () => {
+    await expect(parallel([async () => 1], { concurrency: 0 }))
+      .rejects.toThrow(/positive integer/)
+  })
+ 
+  it('throws on non-integer concurrency', async () => {
+    await expect(parallel([async () => 1], { concurrency: 2.5 }))
+      .rejects.toThrow(/positive integer/)
+  })
+ 
+  it('throws on NaN concurrency', async () => {
+    await expect(parallel([async () => 1], { concurrency: NaN }))
+      .rejects.toThrow(/positive integer/)
+  })
+ 
+  it('accepts undefined concurrency — unlimited', async () => {
+    const result = await parallel([async () => 1, async () => 2, async () => 3])
+    expect(result).toEqual([1, 2, 3])
   })
 })
 

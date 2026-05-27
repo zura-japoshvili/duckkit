@@ -1,15 +1,19 @@
 /**
  * Memoizes a function — caches results by arguments and returns cached value on repeat calls.
  *
- * Uses `JSON.stringify` for cache keying, so works well with
- * primitives and plain objects. Not suitable for functions that take
- * non-serializable args (e.g. class instances, functions, `undefined`).
+ * Uses `JSON.stringify` for cache keying. This means:
+ * - Throws on circular references and `BigInt` args
+ * - Functions, symbols, and `undefined` values inside objects are dropped, causing collisions
+ * - Object key order affects the cache key (`{a:1,b:2}` and `{b:2,a:1}` are different)
+ * - `null` and `undefined` as top-level args produce the same cache key
  *
  * For async functions, use `memoAsync` instead — it deduplicates concurrent calls.
  *
  * @param fn - The function to memoize
- * @param options.maxSize - Max number of cached entries. When exceeded, the oldest entry is evicted (FIFO).
+ * @param options.maxSize - Max number of cached entries (must be a positive integer).
+ *   When exceeded, the oldest entry is evicted (FIFO).
  * @returns A memoized version of `fn` with the same signature
+ * @throws If `maxSize` is provided and is not a positive integer
  *
  * @example
  * const expensiveCalc = memo((n: number) => n * n * n)
@@ -24,6 +28,12 @@ export function memo<Args extends unknown[], R>(
   fn: (...args: Args) => R,
   options?: { maxSize?: number }
 ): (...args: Args) => R {
+  if (options?.maxSize !== undefined) {
+    if (!Number.isInteger(options.maxSize) || options.maxSize < 1) {
+      throw new Error('memo: maxSize must be a positive integer')
+    }
+  }
+
   const cache = new Map<string, R>()
   const maxSize = options?.maxSize
 
@@ -34,7 +44,7 @@ export function memo<Args extends unknown[], R>(
     const result = fn(...args)
     cache.set(key, result)
 
-    if (maxSize && cache.size > maxSize) {
+    if (maxSize !== undefined && cache.size > maxSize) {
       cache.delete(cache.keys().next().value!)
     }
 
