@@ -1,6 +1,6 @@
 {
   "name": "duckkit",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed. Typed groupBy, safe/Result type, pipe, pipeline, compose, curry, typed event emitter, delaySkippable, and more.",
   "author": "Zura Japoshvili",
   "license": "MIT",
