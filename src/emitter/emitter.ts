@@ -51,6 +51,10 @@ export interface Emitter<Events extends EventMap> {
   /**
    * Emits an event, calling all subscribed handlers.
    *
+   * The handler list is snapshotted when emit starts: handlers added during
+   * the emit fire on the next emit, not this one; handlers removed during the
+   * emit still fire this round.
+   *
    * For `void` events, no second argument is needed or accepted.
    * For typed events, the payload argument is required and typed.
    *
@@ -103,7 +107,12 @@ export function createEmitter<Events extends EventMap>(): Emitter<Events> {
     ...args: Events[K] extends void ? [event: K] : [event: K, payload: Events[K]]
   ): void {
     const [event, payload] = args as [K, Events[K]]
-    listeners.get(event)?.forEach(fn => fn(payload))
+    const handlers = listeners.get(event)
+    if (!handlers) return
+    // Snapshot the handlers so subscriptions/unsubscriptions made inside a
+    // handler don't affect the current dispatch (prevents re-entrancy loops
+    // and skipped handlers).
+    for (const fn of [...handlers]) fn(payload)
   }
 
   function clear(event?: keyof Events): void {

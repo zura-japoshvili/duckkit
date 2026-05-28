@@ -55,7 +55,7 @@ const off = emitter.on('win', amount => {
 off()
 ```
 
-Multiple handlers can be subscribed to the same event. They fire in subscription order.
+Multiple handlers can be subscribed to the same event. They fire in subscription order. Subscribing the same handler reference twice has no effect — handlers are stored in a `Set`, so duplicates are ignored.
 
 ---
 
@@ -118,6 +118,14 @@ emitter.emit('error', { code: 404, message: 'Not found' })
 ```
 
 Handlers are called synchronously — emit returns after all handlers finish.
+
+> **The handler list is snapshotted at emit time:** If a handler subscribes a new handler to the same event during the emit, the new one does **not** fire in the current emit — it waits for the next one. This prevents re-entrancy loops. Conversely, if a handler removes another handler during the emit, the removed handler **still fires** in the current round (it's gone from the next emit onward). This matches the behavior of Node's `EventEmitter`.
+>
+> ```typescript
+> emitter.on('win', () => emitter.on('win', late))
+> emitter.emit('win', 1)  // `late` not called — added mid-emit
+> emitter.emit('win', 2)  // `late` called now ✅
+> ```
 
 > **Errors in handlers propagate and stop remaining handlers:** If one handler throws, subsequent handlers in the same emit call are not called. Guard inside handlers if partial execution is a concern.
 >

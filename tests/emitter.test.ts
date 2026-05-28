@@ -310,3 +310,61 @@ describe('createEmitter — independence', () => {
     expect(hb).not.toHaveBeenCalled()
   })
 })
+
+describe('createEmitter — emit snapshot / re-entrancy', () => {
+  it('handler added during emit does not fire in the same emit', () => {
+    const emitter = createEmitter<{ tick: void }>()
+    const late = vi.fn()
+    emitter.on('tick', () => {
+      emitter.on('tick', late)
+    })
+    emitter.emit('tick')
+    expect(late).not.toHaveBeenCalled()  // added mid-emit, waits for next
+    emitter.emit('tick')
+    expect(late).toHaveBeenCalledTimes(1)
+  })
+ 
+  it('handler removed during emit still fires in the current emit', () => {
+    const emitter = createEmitter<{ tick: void }>()
+    const h2 = vi.fn()
+    emitter.on('tick', () => emitter.off('tick', h2))  // removes h2 mid-emit
+    emitter.on('tick', h2)
+    emitter.emit('tick')
+    expect(h2).toHaveBeenCalledTimes(1)  // snapshot — fires despite removal
+    emitter.emit('tick')
+    expect(h2).toHaveBeenCalledTimes(1)  // gone for subsequent emits
+  })
+ 
+  it('a handler that re-emits the same event does not loop forever', () => {
+    const emitter = createEmitter<{ tick: void }>()
+    let depth = 0
+    emitter.on('tick', () => {
+      depth++
+      if (depth < 5) emitter.emit('tick')  // re-entrant emit
+    })
+    expect(() => emitter.emit('tick')).not.toThrow()
+    // The single handler runs once per nested emit, bounded by the guard.
+    expect(depth).toBe(5)
+  })
+ 
+  it('once handler that re-emits the same event fires only once', () => {
+    const emitter = createEmitter<{ tick: void }>()
+    const handler = vi.fn(() => {
+      emitter.emit('tick')  // re-emit from inside a once handler
+    })
+    emitter.once('tick', handler)
+    emitter.emit('tick')
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+ 
+  it('clear() during emit does not break the current dispatch', () => {
+    const emitter = createEmitter<{ tick: void }>()
+    const h2 = vi.fn()
+    emitter.on('tick', () => emitter.clear())  // wipes everything mid-emit
+    emitter.on('tick', h2)
+    emitter.emit('tick')
+    expect(h2).toHaveBeenCalledTimes(1)  // snapshot — h2 still fires this round
+    emitter.emit('tick')
+    expect(h2).toHaveBeenCalledTimes(1)  // cleared for subsequent emits
+  })
+})
