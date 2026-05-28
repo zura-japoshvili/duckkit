@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-05-28
+
+### Fixed
+- `async/retry` — throws a clear error on invalid `times` (`< 1`, non-integer, `NaN`) instead of throwing a generic "retry failed" without ever calling `fn`. Corrected the backoff delay example in the docs (`times=3` produces 2 delays, not 3)
+- `async/parallel` — throws on negative or non-integer `concurrency` instead of silently returning an array of `undefined`
+- `async/memo`, `async/memoAsync` — throw on negative or non-integer `maxSize`; eviction check no longer skipped for valid sizes
+
+### Changed
+- `emitter/emit` — handler list is now snapshotted at emit time. Handlers added during an emit fire on the next emit, not the current one; handlers removed during an emit still fire the current round. Prevents re-entrancy loops and matches Node `EventEmitter`. Breaking if you relied on the old live-iteration behavior
+- `async/parallel` — `concurrency: 0` now throws (was silently treated as unlimited). Omit the option for unlimited concurrency
+- `async/memo`, `async/memoAsync` — `maxSize: 0` now throws (was silently treated as "no limit"). Omit the option for an unbounded cache
+
+### Refactor
+- `fn/composeAsync` — reverse the composed functions once at creation time instead of on every call
+
+### Docs
+- `docs/async.md` — corrected the `retry` backoff example; documented `JSON.stringify` keying limits for `memo`/`memoAsync` (BigInt and circular refs throw, object key order matters, `null`/`undefined` collide); added `this`-binding note for `debounce`/`throttle`; noted `concurrency` validation for `parallel`
+- `docs/fn.md` — noted that typing goes loose beyond 5 composed steps; expanded the `curry` default-params limitation
+- `docs/emitter.md` — documented the emit snapshot semantics and the `Set` dedup behavior of `on`
+
+---
+
 ## [0.1.8] - 2026-05-27
 
 ### Security
@@ -139,7 +161,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.5...v0.1.6
