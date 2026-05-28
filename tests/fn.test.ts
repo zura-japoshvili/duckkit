@@ -434,3 +434,50 @@ describe('when', () => {
     expect(normalize({ name: 'zura', active: false })).toEqual({ name: 'zura', active: false })
   })
 })
+
+
+describe('curry — documented limitations', () => {
+  it('default params break currying — fn returned uncurried', () => {
+    const fn = (a: number, b: number = 5) => a + b
+    // fn.length is 1 due to the default, so curry returns fn as-is.
+    const curried = curry(fn as never) as unknown as (a: number) => number
+    // Calling with one arg executes immediately instead of returning a function.
+    expect(curried(3)).toBe(8)            // ran now, b defaulted to 5
+    expect(typeof curried(3)).toBe('number')  // not a function
+  })
+ 
+  it('rest args are not counted — treated by remaining fixed arity', () => {
+    const fn = (a: number, b: number, ...rest: number[]) =>
+      a + b + rest.reduce((s, n) => s + n, 0)
+    // fn.length is 2 (rest not counted), so curry treats it as 2-arg.
+    const curried = curry(fn as never) as unknown as (a: number) => (b: number) => number
+    expect(curried(1)(2)).toBe(3)  // rest is empty, ignored
+  })
+})
+ 
+describe('pipeline / composeAsync — beyond 5 steps', () => {
+  it('6+ step pipeline still works at runtime (typing is loose)', () => {
+    const process = (pipeline as (...fns: ((n: number) => number)[]) => (n: number) => number)(
+      n => n + 1,
+      n => n + 1,
+      n => n + 1,
+      n => n + 1,
+      n => n + 1,
+      n => n + 1,
+    )
+    expect(process(0)).toBe(6)
+  })
+ 
+  it('composeAsync reverses once — repeated calls give consistent results', async () => {
+    const process = composeAsync(
+      async (n: number) => n * 2,   // runs third
+      async (n: number) => n + 1,   // runs second
+      async (n: number) => n - 3,   // runs first
+    )
+    // (5 - 3) = 2, +1 = 3, *2 = 6
+    expect(await process(5)).toBe(6)
+    expect(await process(5)).toBe(6)  // second call must match — reversed array reused, not re-reversed
+    expect(await process(10)).toBe(16)
+  })
+})
+ 

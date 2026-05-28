@@ -18,6 +18,8 @@ Function composition utilities. Complements `pipe` (which threads a single value
 
 All overloaded up to 5 steps. TypeScript infers every intermediate type — no `any` in the chain.
 
+> **Beyond 5 steps the types go loose:** The overloads cover up to 5 functions. A 6th step and beyond still runs correctly at runtime, but the composed function falls back to a loose signature — TypeScript stops checking the intermediate types and the result is no longer precisely typed. For longer chains, split into two composed functions, or nest one composition inside another to keep full typing.
+
 ---
 
 ## pipeline
@@ -147,7 +149,7 @@ clamp0to100(150)  // 100
 clamp0to100(-5)   // 0
 ```
 
-> **Only works reliably without default params or rest args:** `curry` uses `fn.length` which stops counting at the first default parameter.
+> **Only works reliably without default params or rest args:** `curry` uses `fn.length` which stops counting at the first default parameter. A function like `(a, b = 5) => ...` reports a length of 1, so `curry` returns it uncurried — calling it with one argument runs it immediately instead of returning a function.
 
 > **4+ arg functions are returned as-is.**
 

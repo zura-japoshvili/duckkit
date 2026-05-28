@@ -9,7 +9,8 @@
  * - `when`     — conditionally apply a function, pass through otherwise
  *
  * All are fully typed with overloads up to 5 steps. TypeScript infers each
- * intermediate type — no `any` in the chain.
+ * intermediate type — no `any` in the chain. Beyond 5 steps the composed
+ * function still works at runtime but its type falls back to a loose signature.
  */
 
 // ─── pipeline ────────────────────────────────────────────────────────────────
@@ -187,9 +188,11 @@ export function composeAsync<A, B, C, D, E, F>(
   f1: (a: A) => B | Promise<B>
 ): (a: A) => Promise<F>
 export function composeAsync(...fns: Function[]): (input: unknown) => Promise<unknown> {
+  // Reverse once at composition time, not on every invocation.
+  const reversed = [...fns].reverse()
   return async (input: unknown) => {
     let result = input
-    for (const fn of [...fns].reverse()) result = await fn(result)
+    for (const fn of reversed) result = await fn(result)
     return result
   }
 }
