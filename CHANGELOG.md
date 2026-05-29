@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.10] - 2026-05-29
 
 ### Fixed
 - `async/once` — if the wrapped function throws on its first call, `once` no longer marks itself as called and returns `undefined` forever after. The `called` flag is now set only after `fn` succeeds, so a failed first call retries on the next invocation
@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `number` — locked documented edge behavior: `roundTo` float midpoints, `truncateTo` negatives, `normalize` single-point range (`NaN`), `toOrdinal` float/`NaN`, `formatBytes` negative and beyond-PB
 - `string` — `slugify` non-ASCII stripping (accented + Cyrillic)
 - `async` — regression test for `once` retrying after a first-call throw
+
+---
 
 ## [0.1.9] - 2026-05-28
 
@@ -179,7 +181,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/zura-japoshvili/duckkit/compare/v0.1.6...v0.1.7
