@@ -28,8 +28,8 @@ export function once<Args extends unknown[], R>(
 
   return (...args: Args): R => {
     if (!called) {
-      called = true
       result = fn(...args)
+      called = true
     }
     return result
   }

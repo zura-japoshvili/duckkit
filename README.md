@@ -20,7 +20,7 @@ A comprehensive TypeScript utility library that provides:
 - **Tree-Shakeable** — import per category, only what you use ends up in the bundle
 - **Fully Typed** — no `any`, no `Record<string, unknown>` workarounds, proper generics throughout
 - **ESM + CJS** — works in Node.js, browsers, and bundlers
-- **Typed `groupBy`** — returns `Record<K, T[]>`, not `Dictionary<any>`
+- **Typed `groupBy`** — returns `Partial<Record<K, T[]>>`, not `Dictionary<any>`
 - **`deepClone` that preserves Dates** — unlike the `JSON.parse(JSON.stringify(...))` trick
 - **`safe` / Result type** — try/catch as a typed value, no untyped throws
 - **`delaySkippable`** — cancellable async wait, unique to duckkit
@@ -46,8 +46,8 @@ npm install duckkit
 | **Array** | `groupBy()` `flatGroupBy()` `sortBy()` `topBy()` `minBy()` `maxBy()` `partition()` `chunk()` `unique()` `zip()` `flatten()` `range()` `compact()` `sample()` `shuffle()` `without()` `union()` `intersection()` `difference()` `countBy()` `keyBy()` `sum()` `sumBy()` |
 | **Object** | `pick()` `omit()` `deepClone()` `deepMerge()` `isEqual()` `mapKeys()` `mapValues()` `invertObject()` `flattenObject()` `unflattenObject()` `filterKeys()` `filterValues()` `keys()` `values()` `entries()` `fromEntries()` `deepFreeze()` `objectDiff()` `mergeIf()` `hasOwn()` |
 | **Async** | `safe()` `safeAsync()` `pipe()` `memo()` `memoAsync()` `debounce()` `throttle()` `retry()` `timeout()` `once()` `defer()` `parallel()` `sequential()` |
-| **Date** | `timeAgo()` `formatDate()` `daysBetween()` `addDays()` `subDays()` `addMonths()` `addYears()` `isBefore()` `isAfter()` `isSameDay()` `startOfDay()` `endOfDay()` `startOfWeek()` `startOfMonth()` `isToday()` `isYesterday()` `isWeekend()` `isThisWeek()` `isThisYear()` |
-| **Number** | `clamp()` `lerp()` `roundTo()` `truncateTo()` `randomInt()` `inRange()` `average()` `normalize()` `toOrdinal()` `toRoman()` `formatNumber()` `formatBytes()` `formatDuration()` |
+| **Date** | `timeAgo()` `formatDate()` `formatDuration()` `daysBetween()` `addDays()` `subDays()` `addMonths()` `addYears()` `isBefore()` `isAfter()` `isSameDay()` `startOfDay()` `endOfDay()` `startOfWeek()` `startOfMonth()` `isToday()` `isYesterday()` `isWeekend()` `isThisWeek()` `isThisYear()` |
+| **Number** | `clamp()` `lerp()` `roundTo()` `truncateTo()` `randomInt()` `inRange()` `average()` `normalize()` `toOrdinal()` `toRoman()` `formatNumber()` `formatBytes()` |
 | **String** | `capitalize()` `truncate()` `excerpt()` `slugify()` `camelCase()` `snakeCase()` `kebabCase()` `pascalCase()` `titleCase()` `isEmpty()` `randomId()` `countOccurrences()` `escapeHtml()` `unescapeHtml()` `template()` `words()` `mask()` `stripHtml()` |
 | **Delay** | `delay()` `delaySkippable()` `delayWithAbort()` `repeat()` |
 | **Emitter** | `createEmitter()` — with `on()` `off()` `once()` `emit()` `clear()` |
@@ -61,7 +61,7 @@ npm install duckkit
 ## Key Features
 
 ### Array Utilities
-- Typed `groupBy` — returns `Record<K, T[]>`, not `any`
+- Typed `groupBy` — returns `Partial<Record<K, T[]>>`, not `any`
 - `partition`, `topBy`, `minBy`, `maxBy`, `chunk`, `compact`, `unique`
 - `shuffle`, `flatten`, `range`, `zip`, `without`, `union`, `intersection`, `difference`
 - `countBy`, `keyBy`, `sum`, `sumBy`, `sample`
@@ -89,6 +89,7 @@ npm install duckkit
 ### Date Utilities
 - `timeAgo` — human-readable relative time ("3 minutes ago")
 - `formatDate` — token-based formatting (`MMM D, YYYY`, `HH:mm:ss`)
+- `formatDuration` — `3661` → `"1h 1m 1s"`
 - `addDays`, `addMonths`, `addYears`, `subDays`, `daysBetween`
 - `startOfDay`, `endOfDay`, `startOfWeek`, `startOfMonth`
 - `isSameDay`, `isBefore`, `isAfter`
@@ -98,7 +99,6 @@ npm install duckkit
 - `clamp`, `lerp`, `normalize` — common math for animations and game dev
 - `roundTo`, `truncateTo` — decimal precision without floating-point surprises
 - `formatBytes` — `1048576` → `"1 MB"`
-- `formatDuration` — `3661` → `"1h 1m 1s"`
 - `toOrdinal` — `21` → `"21st"`
 - `toRoman`, `formatNumber`, `randomInt`, `inRange`, `average`
 
@@ -155,9 +155,10 @@ npm install duckkit
 // lodash — returns Dictionary<User[]>, basically any
 const grouped = _.groupBy(users, x => x.country)
 
-// duckkit — returns Record<"GE" | "US", User[]>
+// duckkit — returns Partial<Record<"GE" | "US", User[]>>
 const grouped = groupBy(users, x => x.country)
-grouped.GE[0].name  // string ✅ — full autocomplete, no any
+grouped.GE?.[0]?.name  // string | undefined ✅ — no any, and the type forces
+                       // you to guard the key, since a group may be absent
 ```
 
 ### `deepClone` that preserves `Date` objects
@@ -217,9 +218,9 @@ import { groupBy, safe, pipe, clamp, slugify, delay } from 'duckkit'
 // or per category — fully tree-shakeable
 import { groupBy, partition, sortBy, chunk } from 'duckkit/array'
 import { safe, safeAsync, pipe, retry, timeout, once, defer } from 'duckkit/async'
-import { formatDate, timeAgo, addDays, startOfDay, isSameDay } from 'duckkit/date'
+import { formatDate, timeAgo, formatDuration, addDays, startOfDay, isSameDay } from 'duckkit/date'
 import { pick, omit, deepMerge, deepClone, flattenObject } from 'duckkit/object'
-import { clamp, lerp, roundTo, average, toOrdinal, formatBytes, formatDuration } from 'duckkit/number'
+import { clamp, lerp, roundTo, average, toOrdinal, formatBytes } from 'duckkit/number'
 import { slugify, camelCase, escapeHtml, template, mask, excerpt } from 'duckkit/string'
 import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
 import { createEmitter } from 'duckkit/emitter'

@@ -82,10 +82,11 @@ roundTo(1234.5, -2)  // 1200 — negative decimals round to tens/hundreds
 roundTo(-1.567, 2)   // -1.57
 ```
 
-> **Floating point can cause incorrect rounding at midpoints:** `roundTo` multiplies by a power of 10 before calling `Math.round`. Due to JS floating point, some midpoint values are represented just below their expected value — `1.045 * 100 = 104.49999999999999` — and round the wrong way.
+> **Floating point can cause incorrect rounding at midpoints:** `roundTo` multiplies by a power of 10 before calling `Math.round`. Due to JS floating point, some `x.xx5` midpoints are represented just *below* their exact value — `1.005 * 100 = 100.49999999999999` — and round the wrong way. (Not all midpoints are affected: `1.045 * 100` happens to be exactly `104.5`, so `roundTo(1.045, 2)` correctly gives `1.05`.)
 >
 > ```typescript
-> roundTo(1.045, 2)  // 1.04 ❌ — expected 1.05
+> roundTo(1.005, 2)  // 1    ❌ — expected 1.01
+> roundTo(1.015, 2)  // 1.01 ❌ — expected 1.02
 > roundTo(1.255, 2)  // 1.25 ❌ — expected 1.26
 > ```
 >
@@ -95,7 +96,7 @@ roundTo(-1.567, 2)   // -1.57
 
 ## truncateTo
 
-Truncates a number to a specified number of decimal places without rounding. The result is never larger in absolute value than the input.
+Truncates a number to a specified number of decimal places without rounding. For positive numbers the result is never rounded up. A tiny epsilon (`1e-9`) is added before flooring to absorb floating-point representation error (e.g. `1.005` stored as `1.00499…`), so values sitting a hair below a boundary still truncate cleanly.
 
 ```typescript
 truncateTo(value: number, decimals?: number): number

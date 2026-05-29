@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `async/once` — if the wrapped function throws on its first call, `once` no longer marks itself as called and returns `undefined` forever after. The `called` flag is now set only after `fn` succeeds, so a failed first call retries on the next invocation
+- `date/timeAgo` — dates 360–364 days in the past now return `"1 year ago"` instead of `"0 years ago"`. `months` reached 12 (at 12 × 30 days) before `years` reached 1 (at 365 days), leaving a gap
+
+### Docs
+- `number/roundTo` — corrected the JSDoc example (`roundTo(1.005, 2)` is `1.00`, not `1.01`) and added a floating-point remark
+- `docs/number.md` — fixed the `roundTo` midpoint footgun: the documented `1.045 → 1.04` case was wrong (it correctly rounds to `1.05`); replaced with genuinely affected values (`1.005`, `1.015`, `1.255`). Softened `truncateTo`'s "never larger in absolute value" wording to note the `1e-9` epsilon
+- `docs/date.md` — documented `formatDuration` (shipped in 0.1.6 but never documented)
+- `README.md` — moved `formatDuration` from the Number section to Date (it is exported from `duckkit/date`, not `duckkit/number`); corrected the `groupBy` examples to `Partial<Record<K, T[]>>` with optional-chained access so they compile under `strict`
+
+### Tests
+- `date` — regression tests for the `timeAgo` 360–364 day gap and documented future-date behavior
+- `number` — locked documented edge behavior: `roundTo` float midpoints, `truncateTo` negatives, `normalize` single-point range (`NaN`), `toOrdinal` float/`NaN`, `formatBytes` negative and beyond-PB
+- `string` — `slugify` non-ASCII stripping (accented + Cyrillic)
+- `async` — regression test for `once` retrying after a first-call throw
+
 ## [0.1.9] - 2026-05-28
 
 ### Fixed

@@ -33,6 +33,10 @@ describe('roundTo', () => {
   it('works with 0', () => expect(roundTo(0, 2)).toBe(0))
   it('works with negative numbers', () => expect(roundTo(-1.567, 2)).toBe(-1.57))
   it('already rounded returns same value', () => expect(roundTo(1.5, 2)).toBe(1.5))
+  // Documented floating-point midpoint behavior — locked so it can't silently change
+  it('float midpoint 1.005 rounds down to 1 (documented)', () => expect(roundTo(1.005, 2)).toBe(1))
+  it('float midpoint 1.255 rounds down to 1.25 (documented)', () => expect(roundTo(1.255, 2)).toBe(1.25))
+  it('float midpoint 1.045 rounds correctly to 1.05', () => expect(roundTo(1.045, 2)).toBe(1.05))
 })
 
 describe('truncateTo', () => {
@@ -47,6 +51,9 @@ describe('truncateTo', () => {
     expect(truncateTo(5.059, 2)).toBe(5.05)
     expect(roundTo(5.059, 2)).toBe(5.06)
   })
+  // Documented: Math.floor floors toward -Infinity, so negatives go more negative
+  it('negative floors toward -Infinity (documented)', () => expect(truncateTo(-5.999, 2)).toBe(-6))
+  it('negative -5.059 → -5.06 (documented)', () => expect(truncateTo(-5.059, 2)).toBe(-5.06))
 })
 
 describe('randomInt', () => {
@@ -112,6 +119,8 @@ describe('normalize', () => {
   it('t=1 returns toMax', () => expect(normalize(100, 0, 100)).toBe(1))
   it('maps to negative range', () => expect(normalize(5, 0, 10, -1, 1)).toBe(0))
   it('works with non-zero fromMin', () => expect(normalize(15, 10, 20)).toBe(0.5))
+  // Documented: a single-point source range divides by zero → NaN
+  it('fromMin === fromMax produces NaN (documented)', () => expect(Number.isNaN(normalize(5, 5, 5))).toBe(true))
 })
 
 describe('toOrdinal', () => {
@@ -127,6 +136,9 @@ describe('toOrdinal', () => {
   it('101st', () => expect(toOrdinal(101)).toBe('101st'))
   it('111th', () => expect(toOrdinal(111)).toBe('111th'))
   it('0th', () => expect(toOrdinal(0)).toBe('0th'))
+  // Documented: no validation, floats/NaN fall through to the default suffix
+  it('float input produces "1.5th" (documented)', () => expect(toOrdinal(1.5)).toBe('1.5th'))
+  it('NaN input produces "NaNth" (documented)', () => expect(toOrdinal(NaN)).toBe('NaNth'))
 })
 
 describe('toRoman', () => {
@@ -164,4 +176,7 @@ describe('formatBytes', () => {
   it('handles decimals', () => expect(formatBytes(1234567)).toBe('1.18 MB'))
   it('0 decimal places', () => expect(formatBytes(1234567, 0)).toBe('1 MB'))
   it('handles bytes under 1KB', () => expect(formatBytes(512)).toBe('512 B'))
+  // Documented broken inputs — locked so a future guard is a conscious change
+  it('negative bytes return "NaN undefined" (documented)', () => expect(formatBytes(-1024)).toBe('NaN undefined'))
+  it('values beyond PB return "... undefined" (documented)', () => expect(formatBytes(2 ** 60)).toBe('1 undefined'))
 })

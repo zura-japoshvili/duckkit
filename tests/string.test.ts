@@ -32,6 +32,9 @@ describe('slugify', () => {
   it('handles already slugified', () => expect(slugify('hello-world')).toBe('hello-world'))
   it('handles empty string', () => expect(slugify('')).toBe(''))
   it('removes leading and trailing hyphens', () => expect(slugify('!hello!')).toBe('hello'))
+  // Documented: \w is ASCII-only, so accented/Cyrillic/CJK letters are stripped, not transliterated
+  it('strips accented letters (documented)', () => expect(slugify('Héllo Wörld')).toBe('hllo-wrld'))
+  it('strips Cyrillic entirely (documented)', () => expect(slugify('Привет')).toBe(''))
 })
 
 describe('camelCase', () => {

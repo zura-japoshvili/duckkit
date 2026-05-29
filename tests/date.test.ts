@@ -284,6 +284,13 @@ describe('timeAgo', () => {
   it('months ago', () => expect(timeAgo(ago(60 * 86400_000))).toBe('2 months ago'))
   it('years ago', () => expect(timeAgo(ago(400 * 86400_000))).toBe('1 year ago'))
   it('multiple years ago', () => expect(timeAgo(ago(800 * 86400_000))).toBe('2 years ago'))
+  // Regression: days 360–364 previously fell into a gap and returned "0 years ago"
+  it('360 days → 1 year ago (regression)', () => expect(timeAgo(ago(360 * 86400_000))).toBe('1 year ago'))
+  it('364 days → 1 year ago (regression)', () => expect(timeAgo(ago(364 * 86400_000))).toBe('1 year ago'))
+  it('365 days → 1 year ago', () => expect(timeAgo(ago(365 * 86400_000))).toBe('1 year ago'))
+  // Documented behavior: future dates collapse to "just now"
+  it('future date returns "just now" (documented)', () =>
+    expect(timeAgo(new Date(Date.now() + 5 * 60_000))).toBe('just now'))
 })
 
 describe('formatDate', () => {
@@ -378,4 +385,3 @@ describe('formatDuration', () => {
   it('full combo', () => expect(formatDuration(7322)).toBe('2h 2m 2s'))
   it('large value', () => expect(formatDuration(86400)).toBe('24h'))
 })
- 

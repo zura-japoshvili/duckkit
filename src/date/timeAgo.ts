@@ -28,5 +28,6 @@ export function timeAgo(date: Date): string {
   if (days < 7) return `${days} days ago`
   if (days < 30) return `${weeks} week${weeks === 1 ? '' : 's'} ago`
   if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
-  return `${years} year${years === 1 ? '' : 's'} ago`
+  const displayYears = years < 1 ? 1 : years
+  return `${displayYears} year${displayYears === 1 ? '' : 's'} ago`
 }

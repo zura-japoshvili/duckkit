@@ -103,7 +103,31 @@ Unknown tokens are preserved as-is — `'YYYY-[Q1]'` → `'2026-[Q1]'`.
 
 ---
 
-## daysBetween
+## formatDuration
+
+Formats a duration given in **seconds** into a compact human-readable string. Only non-zero units are shown, largest first.
+
+```typescript
+formatDuration(seconds: number): string
+```
+
+```typescript
+formatDuration(0)      // "0s"
+formatDuration(45)     // "45s"
+formatDuration(60)     // "1m"
+formatDuration(90)     // "1m 30s"
+formatDuration(3600)   // "1h"
+formatDuration(3660)   // "1h 1m"      — zero seconds omitted
+formatDuration(3661)   // "1h 1m 1s"
+formatDuration(7322)   // "2h 2m 2s"
+formatDuration(86400)  // "24h"
+```
+
+Units cap at hours — there is no day/week unit, so large durations accumulate into the hours field (`86400` → `"24h"`, not `"1d"`). Zero and negative inputs both return `"0s"`.
+
+> **Seconds, not milliseconds:** The input is in seconds. Passing `Date.now()`-style millisecond values will be off by a factor of 1000. Divide by 1000 first: `formatDuration(ms / 1000)`.
+
+> **No fractional or rounding handling:** Each unit is floored, so fractional seconds are dropped (`formatDuration(1.9)` → `"1s"`). Pass whole seconds for predictable output.
 
 Returns the number of full days between two dates. Order doesn't matter — always returns a positive number.
 
