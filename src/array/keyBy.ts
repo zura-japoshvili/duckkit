@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Converts an array into an object keyed by a derived value.
  *
@@ -26,7 +28,7 @@ export function keyBy<T, K extends string>(
 ): Partial<Record<K, T>> {
   const result = {} as Partial<Record<K, T>>
   for (const item of arr) {
-    result[fn(item)] = item
+    setOwn(result, fn(item), item)
   }
   return result
 }

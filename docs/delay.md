@@ -62,15 +62,14 @@ The poll interval controls how quickly the skip is detected. Lower = more respon
 >
 > As a rule, keep `pollInterval` well below `ms`. The default of 50ms is safe for most cases.
 
-> **Errors in `condition()` cause the promise to hang permanently:** If the condition function throws, the error is swallowed inside the `setInterval` callback. The timeout and interval keep running but the promise never settles — it leaks indefinitely.
+> **If `condition()` throws, the promise rejects with that error** and polling stops.
 >
 > ```typescript
 > await delaySkippable(3000, () => {
->   throw new Error('oops')  // promise hangs forever ❌
+>   throw new Error('oops')
 > })
+> // rejects with Error: oops
 > ```
->
-> Always keep `condition` side-effect-free and guaranteed not to throw.
 
 ---
 

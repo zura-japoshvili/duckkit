@@ -312,10 +312,22 @@ describe('curry', () => {
     expect(clamp0to100(50)).toBe(50)
   })
 
-  it('4-arg function is returned unchanged', () => {
-    const fn = (a: number, b: number, c: number, d: number) => a + b + c + d
-    const curried = curry(fn as any) as unknown as typeof fn
-    expect(curried(1, 2, 3, 4)).toBe(10)
+  it('4-arg: curries every argument', () => {
+    const volume = curry((l: number, w: number, h: number, scale: number) => l * w * h * scale)
+    expect(volume(2)(3)(4)(10)).toBe(240)
+  })
+
+  it('5-arg: each step is typed by its parameter', () => {
+    const join = curry((a: string, b: number, c: boolean, d: string, e: number) => `${a}${b}${c}${d}${e}`)
+    const result: string = join('x')(1)(true)('y')(2)
+    expect(result).toBe('x1truey2')
+  })
+
+  it('partial chains of a 4-arg function are independent', () => {
+    const sum4 = curry((a: number, b: number, c: number, d: number) => a + b + c + d)
+    const from1 = sum4(1)
+    expect(from1(2)(3)(4)).toBe(10)
+    expect(from1(20)(30)(40)).toBe(91)
   })
 })
 
@@ -437,20 +449,34 @@ describe('when', () => {
 
 
 describe('curry — documented limitations', () => {
-  it('default params break currying — fn returned uncurried', () => {
+  it('rejects a function whose second parameter has a default', () => {
     const fn = (a: number, b: number = 5) => a + b
-    // fn.length is 1 due to the default, so curry returns fn as-is.
-    const curried = curry(fn as never) as unknown as (a: number) => number
-    // Calling with one arg executes immediately instead of returning a function.
-    expect(curried(3)).toBe(8)            // ran now, b defaulted to 5
-    expect(typeof curried(3)).toBe('number')  // not a function
+    // fn.length is 1, so there is nothing to curry. Rejected at compile time and at runtime.
+    // @ts-expect-error — b is optional
+    expect(() => curry(fn)).toThrow('curry: fn must declare at least 2 parameters')
   })
- 
+
+  it('rejects optional parameters at compile time (fn.length cannot be known from the type)', () => {
+    const fn = (a: number, b: number, c?: number) => a + b + (c ?? 0)
+    // @ts-expect-error — c is optional: fn.length counts it, but a default (c = 0) would not
+    expect(typeof curry(fn)).toBe('function')
+  })
+
+  it('explains wrapped functions whose length is 0', () => {
+    const wrapped = (...args: [number, number]) => args[0] + args[1]
+    expect(() => curry(wrapped)).toThrow('wrapped functions')
+  })
+
+  it('rejects a single-parameter function', () => {
+    // @ts-expect-error — a single parameter cannot be curried
+    expect(() => curry((a: number) => a)).toThrow('curry: fn must declare at least 2 parameters')
+  })
+
   it('rest args are not counted — treated by remaining fixed arity', () => {
     const fn = (a: number, b: number, ...rest: number[]) =>
       a + b + rest.reduce((s, n) => s + n, 0)
-    // fn.length is 2 (rest not counted), so curry treats it as 2-arg.
-    const curried = curry(fn as never) as unknown as (a: number) => (b: number) => number
+    // fn.length is 2 (rest not counted), so curry treats it as 2-arg — and types it that way.
+    const curried: (a: number) => (b: number) => number = curry(fn)
     expect(curried(1)(2)).toBe(3)  // rest is empty, ignored
   })
 })

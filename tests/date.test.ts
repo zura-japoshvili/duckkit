@@ -88,9 +88,39 @@ describe('addMonths', () => {
     expect(result.getMonth()).toBe(1)
   })
 
-  it('handles month overflow — Jan 31 + 1 month', () => {
-    const result = addMonths(new Date(2026, 0, 31), 1)
-    expect(result.getMonth()).toBe(2) // JS overflows to March
+  const ymd = (d: Date) => [d.getFullYear(), d.getMonth(), d.getDate()]
+
+  it('clamps to the last day — Jan 31 + 1 month is Feb 28', () => {
+    expect(ymd(addMonths(new Date(2026, 0, 31), 1))).toEqual([2026, 1, 28])
+  })
+
+  it('clamps to Feb 29 in a leap year', () => {
+    expect(ymd(addMonths(new Date(2028, 0, 31), 1))).toEqual([2028, 1, 29])
+  })
+
+  it('clamps Mar 31 + 1 month to Apr 30', () => {
+    expect(ymd(addMonths(new Date(2026, 2, 31), 1))).toEqual([2026, 3, 30])
+  })
+
+  it('clamps going backward — Mar 31 - 1 month is Feb 28', () => {
+    expect(ymd(addMonths(new Date(2026, 2, 31), -1))).toEqual([2026, 1, 28])
+  })
+
+  it('clamps across a year boundary — Dec 31 + 2 months is Feb 28', () => {
+    expect(ymd(addMonths(new Date(2025, 11, 31), 2))).toEqual([2026, 1, 28])
+  })
+
+  it('keeps the day when it exists', () => {
+    expect(ymd(addMonths(new Date(2026, 0, 15), 1))).toEqual([2026, 1, 15])
+  })
+
+  it('keeps the time of day', () => {
+    const r = addMonths(new Date(2026, 0, 31, 13, 45, 10, 500), 1)
+    expect([r.getHours(), r.getMinutes(), r.getSeconds(), r.getMilliseconds()]).toEqual([13, 45, 10, 500])
+  })
+
+  it('returns Invalid Date for an invalid input', () => {
+    expect(Number.isNaN(addMonths(new Date('not a date'), 1).getTime())).toBe(true)
   })
 
   it('does not mutate original', () => {
@@ -123,6 +153,21 @@ describe('addYears', () => {
     const result = addYears(new Date(2026, 4, 13), 1)
     expect(result.getMonth()).toBe(4)
     expect(result.getDate()).toBe(13)
+  })
+
+  it('Feb 29 + 1 year is Feb 28, not Mar 1', () => {
+    const r = addYears(new Date(2024, 1, 29), 1)
+    expect([r.getFullYear(), r.getMonth(), r.getDate()]).toEqual([2025, 1, 28])
+  })
+
+  it('Feb 29 + 4 years stays Feb 29', () => {
+    const r = addYears(new Date(2024, 1, 29), 4)
+    expect([r.getFullYear(), r.getMonth(), r.getDate()]).toEqual([2028, 1, 29])
+  })
+
+  it('keeps the time of day', () => {
+    const r = addYears(new Date(2024, 1, 29, 8, 30), 1)
+    expect([r.getHours(), r.getMinutes()]).toEqual([8, 30])
   })
 })
 

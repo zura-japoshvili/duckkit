@@ -192,22 +192,16 @@ addMonths(new Date(), 3)   // 3 months from now
 addMonths(new Date(), -1)  // last month
 ```
 
-> **End-of-month overflow goes to the next month, not the last valid day:** Adding 1 month to Jan 31 does not clamp to Feb 28 — JavaScript's `setMonth` overflows to March 3 (or March 2 in a leap year). This is native JS behavior with no clamping.
->
-> ```typescript
-> addMonths(new Date('2026-01-31'), 1)  // 2026-03-03 ⚠️ — not Feb 28
-> addMonths(new Date('2026-03-31'), 1)  // 2026-05-01 ⚠️ — April has 30 days
-> ```
->
-> If you need safe end-of-month clamping, clamp the day after adding:
->
-> ```typescript
-> function addMonthsClamped(date: Date, months: number): Date {
->   const result = new Date(date.getFullYear(), date.getMonth() + months + 1, 0)
->   const target = new Date(date.getFullYear(), date.getMonth() + months, date.getDate())
->   return target.getMonth() !== (date.getMonth() + months + 12) % 12 ? result : target
-> }
-> ```
+**End of month is clamped, not overflowed.** If the day does not exist in the target month, the last day of that month is used. Plain JavaScript `setMonth` would overflow into the next month instead.
+
+```typescript
+addMonths(new Date(2026, 0, 31), 1)   // 2026-02-28 ✅ — setMonth gives Mar 3
+addMonths(new Date(2028, 0, 31), 1)   // 2028-02-29 — leap year
+addMonths(new Date(2026, 2, 31), 1)   // 2026-04-30 ✅ — setMonth gives May 1
+addMonths(new Date(2026, 2, 31), -1)  // 2026-02-28
+```
+
+The time of day is kept. An invalid date stays invalid.
 
 ---
 
@@ -224,7 +218,12 @@ addYears(new Date(), 1)   // next year
 addYears(new Date(), -2)  // 2 years ago
 ```
 
-Preserves month and day. Adding 1 year to Feb 29 on a leap year overflows to March 1 on a non-leap year — same JS `setFullYear` behavior as `addMonths`.
+Preserves month, day and time of day. Feb 29 + 1 year is Feb 28 — clamped like `addMonths`, never March 1.
+
+```typescript
+addYears(new Date(2024, 1, 29), 1)  // 2025-02-28
+addYears(new Date(2024, 1, 29), 4)  // 2028-02-29
+```
 
 ---
 

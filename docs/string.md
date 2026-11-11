@@ -20,29 +20,17 @@ capitalize(str: string): string
 capitalize('hello world')  // "Hello world"
 capitalize('hELLO')        // "HELLO" — only first letter changed
 capitalize('')             // ""
+capitalize('😀hello')      // "😀hello" — emoji kept whole
+capitalize('élan')         // "Élan"
 ```
 
-> **Breaks on emoji and multi-code-unit characters:** `charAt(0)` operates on UTF-16 code units. Emoji and characters above U+FFFF are two code units — `charAt(0)` returns the first half of the surrogate pair, splitting the character and corrupting the string.
->
-> ```typescript
-> capitalize('😀hello')  // "\uD83Dhello" — emoji is split ❌
-> ```
->
-> For Unicode-safe first-character access, use spread or `[...str][0]`:
->
-> ```typescript
-> function capitalizeSafe(str: string): string {
->   if (!str) return str
->   const chars = [...str]
->   return chars[0]!.toUpperCase() + chars.slice(1).join('')
-> }
-> ```
+> **Georgian is left unchanged:** Georgian capitals (Mtavruli) are only used for all-caps text, never to start a word, so `capitalize('გამარჯობა')` stays `"გამარჯობა"`.
 
 ---
 
 ### camelCase
 
-Converts a string to camelCase. Handles snake_case, kebab-case, spaces, and UPPER_SNAKE.
+Converts a string to camelCase. Handles snake_case, kebab-case, spaces, UPPER_SNAKE, camelCase and PascalCase — the input is split with `words()`, so existing word boundaries are kept.
 
 ```typescript
 camelCase(str: string): string
@@ -53,16 +41,12 @@ camelCase('foo_bar_baz')  // "fooBarBaz"
 camelCase('foo-bar-baz')  // "fooBarBaz"
 camelCase('foo bar baz')  // "fooBarBaz"
 camelCase('FOO_BAR')      // "fooBar"
+camelCase('fooBar')       // "fooBar" — already camelCase, unchanged
+camelCase('FooBarBaz')    // "fooBarBaz"
+camelCase('myAPIKey')     // "myApiKey" — acronyms become one word
+camelCase('приветМир')    // "приветМир" — humps in any cased script
+camelCase('გამარჯობა მსოფლიო') // "გამარჯობაᲛსოფლიო" — Georgian boundaries use Mtavruli
 ```
-
-> **Already-camelCase input gets flattened:** The input is fully lowercased before separators are processed. Existing camel humps are lost.
->
-> ```typescript
-> camelCase('fooBar')     // "foobar" ⚠️ — not "fooBar"
-> camelCase('myAPIKey')   // "myapikey" ⚠️
-> ```
->
-> Only use this to convert from a clearly-separated format (snake, kebab, spaces). Not for re-casing already-camel strings.
 
 ---
 
@@ -100,7 +84,7 @@ kebabCase('FOOBar')      // "foo-bar"
 
 ### pascalCase
 
-Converts a string to PascalCase. Handles snake_case, kebab-case, and spaces.
+Converts a string to PascalCase. Handles snake_case, kebab-case, spaces, camelCase and PascalCase — the input is split with `words()`, so existing word boundaries are kept.
 
 ```typescript
 pascalCase(str: string): string
@@ -110,13 +94,9 @@ pascalCase(str: string): string
 pascalCase('foo_bar_baz')  // "FooBarBaz"
 pascalCase('foo-bar-baz')  // "FooBarBaz"
 pascalCase('hello world')  // "HelloWorld"
+pascalCase('fooBarBaz')    // "FooBarBaz"
+pascalCase('myAPIKey')     // "MyApiKey"
 ```
-
-> **Already-camelCase input gets flattened:** Same as `camelCase` — the input is lowercased first.
->
-> ```typescript
-> pascalCase('fooBarBaz')  // "Foobarbaz" ⚠️ — not "FooBarBaz"
-> ```
 
 ---
 
@@ -132,13 +112,20 @@ titleCase(str: string): string
 titleCase('hello world')   // "Hello World"
 titleCase('hello  world')  // "Hello  World" — preserves spacing
 titleCase('hELLO wORLD')   // "HELLO WORLD" — does not lowercase existing uppercase
+titleCase("don't stop")    // "Don't Stop" — apostrophes stay inside the word
+titleCase('élan vital')    // "Élan Vital" — works for any script with capitals
+titleCase('foo_bar baz')   // "Foo_bar Baz" — underscores stay inside the word
+titleCase('3rd place')     // "3rd Place"
+titleCase("the 'quick' fox") // "The 'Quick' Fox" — words in single quotes too
 ```
 
-> **Hyphenated words get each part capitalized:** `\b` (word boundary) exists on both sides of a hyphen since `-` is not a word character. Each part of a hyphenated word is treated as a separate word.
+> **Hyphenated words get each part capitalized:** a hyphen separates words.
 >
 > ```typescript
 > titleCase('well-known issue')  // "Well-Known Issue" — may or may not be desired
 > ```
+
+> **Georgian is left unchanged:** Georgian capitals (Mtavruli) are only used for all-caps text, never to start a word, so `titleCase('გამარჯობა')` stays `"გამარჯობა"`.
 
 ---
 
@@ -165,7 +152,7 @@ Useful as a building block for custom case conversion.
 
 ## slugify
 
-Converts a string to a URL-safe slug.
+Converts a string to a lowercase, hyphen-separated slug.
 
 ```typescript
 slugify(str: string): string
@@ -175,18 +162,25 @@ slugify(str: string): string
 slugify('Hello World!')       // "hello-world"
 slugify('My Blog Post #1')    // "my-blog-post-1"
 slugify('  extra   spaces  ') // "extra-spaces"
+slugify('a - b -- c')         // "a-b-c" — runs of spaces, _ and - become one hyphen
 slugify('!hello!')            // "hello" — leading/trailing hyphens removed
 slugify('')                   // ""
 ```
 
-> **Non-ASCII letters are stripped entirely:** The `[^\w\s-]` filter uses `\w`, which is ASCII-only in JS (`[a-zA-Z0-9_]`). Accented, CJK, Cyrillic, and other Unicode letters are removed — not transliterated.
->
-> ```typescript
-> slugify('Héllo Wörld')  // "hllo-wrld" ❌ — é and ö are removed
-> slugify('Привет')       // "" ❌ — Cyrillic stripped entirely
-> ```
->
-> If you need to support non-ASCII titles, transliterate to ASCII first (e.g. `héllo` → `hello`) before calling `slugify`, or use a library like `slugify` (npm) that handles Unicode transliteration.
+**Works for every language.** Letters and digits from any script are kept; accents on Latin letters are removed. Punctuation, symbols, fractions and emoji are dropped; full-width letters and digits become plain ones.
+
+```typescript
+slugify('Crème Brûlée')       // "creme-brulee"
+slugify('გამარჯობა მსოფლიო')  // "გამარჯობა-მსოფლიო"
+slugify('Привет мир')         // "привет-мир"
+slugify('한국어 블로그')        // "한국어-블로그"
+slugify('I ❤️ TS & JS')       // "i-ts-js"
+slugify('Duckkit™ Pro')       // "duckkit-pro"
+slugify('1½ cups')            // "1-cups"
+slugify('ＡＢＣ１２３')          // "abc123"
+```
+
+> **Non-Latin slugs are not ASCII:** they are valid in URLs — browsers show them as typed and send them percent-encoded — but if you need ASCII-only slugs, transliterate first (e.g. with the `transliteration` package) and then call `slugify`.
 
 ---
 
@@ -204,21 +198,17 @@ truncate('Hello World', 8, ' →')  // "Hello  →"
 truncate('Hi', 8)                 // "Hi" — fits, unchanged
 truncate('Hello World', 5, '')    // "Hello" — empty suffix
 truncate('Hello World', 3, '...') // "..." — suffix fills entire length
+truncate('Hello World', 2, '...') // ".." — the result never exceeds maxLength
+truncate('Hi😀there', 6)          // "Hi..." — the emoji does not fit whole, so it is left out
 ```
 
-> **`suffix` longer than `maxLength` produces output over the limit:** `str.slice(0, maxLength - suffix.length)` gets a negative index when `suffix.length > maxLength`. A negative slice index counts from the end of the string, making the result far longer than intended.
->
-> ```typescript
-> truncate('Hello World', 2, '...')  // "Hello Worl..." ❌ — not 2 chars
-> ```
->
-> Always ensure `maxLength > suffix.length`. A safe check: `if (maxLength <= suffix.length) return suffix.slice(0, maxLength)`.
+**Characters are never cut in half.** Length is measured like `str.length`, but an emoji, flag (🇬🇪), emoji with a skin tone or ZWJ (👨‍👩‍👧), or letter with a combining accent that does not fit whole is left out — never split into broken characters. This uses `Intl.Segmenter` (every current browser, Node.js 16+); without it, at least an emoji is never split in half.
 
 ---
 
 ## excerpt
 
-Like `truncate` but cuts at a word boundary instead of mid-word.
+Like `truncate` but cuts at a word boundary instead of mid-word. A single word longer than the limit is cut — like `truncate`, never in the middle of a character. The result never exceeds `maxLength`.
 
 ```typescript
 excerpt(str: string, maxLength: number, suffix?: string): string
@@ -235,11 +225,9 @@ excerpt('', 10)                         // ""
 Key difference from `truncate`:
 
 ```typescript
-truncate('Hello World foo', 13)  // "Hello World f..." — cuts mid-word
-excerpt('Hello World foo', 13)   // "Hello World..." — cuts at word boundary
+truncate('Hello World foo bar', 16)  // "Hello World f..." — cuts mid-word
+excerpt('Hello World foo bar', 16)   // "Hello World..." — cuts at word boundary
 ```
-
-> **Same `suffix > maxLength` bug as `truncate`:** If `suffix.length > maxLength`, `limit` becomes negative and the result is longer than `maxLength`. Same fix applies.
 
 ---
 
@@ -259,6 +247,8 @@ isEmpty('hello')  // false
 isEmpty(' hi ')   // false
 ```
 
+> **`import { isEmpty } from 'duckkit'` gives the validate version,** which gives the same answer for strings and also handles arrays and objects. `duckkit/string` keeps this string-only one.
+
 ---
 
 ## randomId
@@ -276,11 +266,11 @@ randomId(4)    // "xK9m"
 randomId(0)    // ""
 ```
 
-Uses `crypto.getRandomValues` — secure, no `Math.random`. Works in browser and Node 18+.
+Uses `crypto.getRandomValues` — secure, no `Math.random`. Every character is equally likely: random bytes that would favour some characters (248–255, since 256 is not a multiple of 62) are thrown away and redrawn.
 
-> **Slight character distribution bias:** The charset has 62 characters. Byte values 0–255 don't divide evenly by 62 (remainder 8), so the first 8 characters in the charset (`A–H`) are selected slightly more often than the rest. For most use cases the bias is negligible, but it's not perfectly uniform.
+`length` must be a non-negative integer — anything else throws.
 
-> **`crypto` not available in Node < 18:** `crypto.getRandomValues` is a global in browsers and Node 18+. Older Node versions throw `ReferenceError: crypto is not defined`. If you need to support Node < 18, import it explicitly: `import { webcrypto as crypto } from 'crypto'`.
+> **Needs the global `crypto`:** available in every current browser and in Node.js 19+. Older Node versions throw `ReferenceError: crypto is not defined`.
 
 ---
 
@@ -436,6 +426,9 @@ template('Hello {name}!', {})                         // "Hello {name}!"
 
 // missing keys — with fallback
 template('Hello {name}!', {}, 'stranger')             // "Hello stranger!"
+
+// Object.prototype members never count — other inherited values (class getters) do
+template('{constructor}', {})                         // "{constructor}"
 ```
 
 > **Keys must match `\w+` — hyphens and dots silently don't work:** The placeholder regex is `/\{(\w+)\}/g`, which only matches letters, digits, and underscores. Keys with hyphens or dots never resolve.

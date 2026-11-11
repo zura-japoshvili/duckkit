@@ -16,8 +16,9 @@
  */
 export function words(str: string): string[] {
   return str
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    // \p{Lu}/\p{Ll} instead of A-Z/a-z, so humps in any cased script split (приветМир, grüßGott)
+    .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
+    .replace(/([\p{Ll}\d])(\p{Lu})/gu, '$1 $2')
     .replace(/[-_]+/g, ' ')
     .toLowerCase()
     .trim()

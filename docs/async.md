@@ -200,7 +200,8 @@ const getUser = memoAsync(fetchUser, { maxSize: 200 })
 Returns a debounced version of a function. Only fires after the specified delay has passed since the last call.
 
 ```typescript
-debounce<Args>(fn: (...args: Args) => void, delay: number): (...args: Args) => void
+debounce<Args>(fn: (...args: Args) => void, delay: number): Debounced<Args>
+// Debounced<Args> = ((...args: Args) => void) & { cancel(): void; flush(): void }
 ```
 
 ```typescript
@@ -211,9 +212,15 @@ input.addEventListener('input', e => onSearch(e.target.value))
 
 Every new call resets the timer. Only the args from the last call are used when it fires.
 
-> **Return value is always `void`:** The debounced wrapper can't return the original function's value since execution is deferred. Don't use it to wrap functions whose return value you need synchronously.
+`cancel()` drops the pending call. `flush()` runs the pending call right now, with the last args, instead of waiting. Both do nothing when no call is pending.
 
-> **No cancel or flush:** There is no `.cancel()` to clear a pending call or `.flush()` to fire it immediately. If you need either, implement them on top or use a library like lodash that includes them.
+```typescript
+const save = debounce(() => saveForm(), 1000)
+window.addEventListener('beforeunload', () => save.flush())  // don't lose the last edit
+onUnmount(() => save.cancel())                                // or drop it
+```
+
+> **Return value is always `void`:** The debounced wrapper can't return the original function's value since execution is deferred. Don't use it to wrap functions whose return value you need synchronously.
 
 > **`this` is not preserved:** The returned wrapper is an arrow function — `this` is captured lexically at the call to `debounce`, not at the call to the wrapper. If you debounce a method that uses `this`, bind it first or wrap manually:
 >
@@ -229,21 +236,28 @@ Every new call resets the timer. Only the args from the last call are used when 
 
 ## throttle
 
-Returns a throttled version of a function. Fires immediately on the first call, then ignores calls until the interval passes.
+Returns a throttled version of a function that runs at most once per `ms` milliseconds. The first call runs immediately. Calls made while waiting are not lost: the last one runs when the wait ends (the "trailing" call), with the newest arguments.
 
 ```typescript
-throttle<Args>(fn: (...args: Args) => void, ms: number): (...args: Args) => void
+throttle<Args>(fn: (...args: Args) => void, ms: number, options?: { trailing?: boolean }): Throttled<Args>
+// Throttled<Args> = ((...args: Args) => void) & { cancel(): void }
 ```
 
 ```typescript
 const onScroll = throttle(() => updatePosition(), 100)
 window.addEventListener('scroll', onScroll)
-// fires immediately, then at most once every 100ms
+// runs immediately, at most once every 100ms, and once more after scrolling stops
 ```
 
-Unlike `debounce`, throttle guarantees the function fires right away and at a steady rate.
+Unlike `debounce`, throttle runs right away and at a steady rate. Because of the trailing call, the final position after a scroll or resize is always handled.
 
-> **Trailing call is dropped:** If the last call in a burst falls within the throttle interval, it is silently discarded — it never fires. There is no trailing execution. If the final call matters (e.g. a form autosave on the last keystroke), use `debounce` instead.
+- `{ trailing: false }` drops calls made while waiting instead of running the last one.
+- `cancel()` drops a pending trailing call and resets the timer, so the next call runs immediately.
+
+```typescript
+const onResize = throttle(() => recalcLayout(), 200, { trailing: false })
+onUnmount(() => onResize.cancel())
+```
 
 > **Return value is always `void`:** Same as `debounce` — the throttled wrapper can't return the original function's value.
 

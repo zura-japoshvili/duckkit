@@ -1,3 +1,5 @@
+import { hasOwnKey, setOwn } from '../_internal/own'
+
 /**
  * Groups items by a key and returns the count per group.
  *
@@ -26,7 +28,7 @@ export function countBy<T, K extends string>(
   const result = {} as Partial<Record<K, number>>
   for (const item of arr) {
     const key = fn(item)
-    result[key] = (result[key] ?? 0) + 1
+    setOwn(result, key, (hasOwnKey(result, key) ? result[key]! : 0) + 1)
   }
   return result
 }

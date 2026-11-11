@@ -1,3 +1,5 @@
+import { hasOwnKey, setOwn } from '../_internal/own'
+
 /**
  * Recursively merges two objects. Nested plain objects are merged, not replaced.
  * Arrays and primitives in `override` always win.
@@ -54,12 +56,12 @@ export function deepMerge<T extends object, U extends object>(
 
   for (const key of Object.keys(override) as (keyof U)[]) {
     const overrideVal = override[key]
-    const baseVal = result[key as string]
+    const baseVal = hasOwnKey(result, key) ? result[key as string] : undefined
 
     if (isPlainObject(overrideVal) && isPlainObject(baseVal)) {
-      result[key as string] = deepMerge(baseVal, overrideVal)
+      setOwn(result, key, deepMerge(baseVal, overrideVal))
     } else {
-      result[key as string] = overrideVal
+      setOwn(result, key, overrideVal)
     }
   }
 

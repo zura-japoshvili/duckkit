@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Flattens a nested object into a single level using dot-notation keys.
  *
@@ -44,12 +46,12 @@ export function flattenObject(
       const nested = flattenObject(value, fullKey)
       if (Object.keys(nested).length === 0) {
         // Preserve empty plain objects instead of dropping them
-        result[fullKey] = {}
+        setOwn(result, fullKey, {})
       } else {
-        Object.assign(result, nested)
+        for (const k of Object.keys(nested)) setOwn(result, k, nested[k])
       }
     } else {
-      result[fullKey] = value
+      setOwn(result, fullKey, value)
     }
   }
   return result

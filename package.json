@@ -1,12 +1,12 @@
 {
   "name": "duckkit",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "description": "TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed. Typed groupBy, safe/Result type, pipe, pipeline, compose, curry, typed event emitter, delaySkippable, and more.",
   "author": "Zura Japoshvili",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zura-japoshvili/duckkit.git"
+    "url": "git+https://github.com/zura-japoshvili/duckkit.git"
   },
   "keywords": [
     "typescript",
@@ -151,65 +151,172 @@
     "browser"
   ],
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "object": [
+        "./dist/object/index.d.ts"
+      ],
+      "array": [
+        "./dist/array/index.d.ts"
+      ],
+      "date": [
+        "./dist/date/index.d.ts"
+      ],
+      "async": [
+        "./dist/async/index.d.ts"
+      ],
+      "string": [
+        "./dist/string/index.d.ts"
+      ],
+      "number": [
+        "./dist/number/index.d.ts"
+      ],
+      "delay": [
+        "./dist/delay/index.d.ts"
+      ],
+      "fn": [
+        "./dist/fn/index.d.ts"
+      ],
+      "emitter": [
+        "./dist/emitter/index.d.ts"
+      ],
+      "encode": [
+        "./dist/encode/index.d.ts"
+      ],
+      "validate": [
+        "./dist/validate/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./object": {
-      "types": "./dist/object/index.d.ts",
-      "import": "./dist/object/index.js",
-      "require": "./dist/object/index.cjs"
+      "import": {
+        "types": "./dist/object/index.d.ts",
+        "default": "./dist/object/index.js"
+      },
+      "require": {
+        "types": "./dist/object/index.d.cts",
+        "default": "./dist/object/index.cjs"
+      }
     },
     "./array": {
-      "types": "./dist/array/index.d.ts",
-      "import": "./dist/array/index.js",
-      "require": "./dist/array/index.cjs"
+      "import": {
+        "types": "./dist/array/index.d.ts",
+        "default": "./dist/array/index.js"
+      },
+      "require": {
+        "types": "./dist/array/index.d.cts",
+        "default": "./dist/array/index.cjs"
+      }
     },
     "./date": {
-      "types": "./dist/date/index.d.ts",
-      "import": "./dist/date/index.js",
-      "require": "./dist/date/index.cjs"
+      "import": {
+        "types": "./dist/date/index.d.ts",
+        "default": "./dist/date/index.js"
+      },
+      "require": {
+        "types": "./dist/date/index.d.cts",
+        "default": "./dist/date/index.cjs"
+      }
     },
     "./async": {
-      "types": "./dist/async/index.d.ts",
-      "import": "./dist/async/index.js",
-      "require": "./dist/async/index.cjs"
+      "import": {
+        "types": "./dist/async/index.d.ts",
+        "default": "./dist/async/index.js"
+      },
+      "require": {
+        "types": "./dist/async/index.d.cts",
+        "default": "./dist/async/index.cjs"
+      }
     },
     "./string": {
-      "types": "./dist/string/index.d.ts",
-      "import": "./dist/string/index.js",
-      "require": "./dist/string/index.cjs"
+      "import": {
+        "types": "./dist/string/index.d.ts",
+        "default": "./dist/string/index.js"
+      },
+      "require": {
+        "types": "./dist/string/index.d.cts",
+        "default": "./dist/string/index.cjs"
+      }
     },
     "./number": {
-      "types": "./dist/number/index.d.ts",
-      "import": "./dist/number/index.js",
-      "require": "./dist/number/index.cjs"
+      "import": {
+        "types": "./dist/number/index.d.ts",
+        "default": "./dist/number/index.js"
+      },
+      "require": {
+        "types": "./dist/number/index.d.cts",
+        "default": "./dist/number/index.cjs"
+      }
     },
     "./delay": {
-      "types": "./dist/delay/index.d.ts",
-      "import": "./dist/delay/index.js",
-      "require": "./dist/delay/index.cjs"
+      "import": {
+        "types": "./dist/delay/index.d.ts",
+        "default": "./dist/delay/index.js"
+      },
+      "require": {
+        "types": "./dist/delay/index.d.cts",
+        "default": "./dist/delay/index.cjs"
+      }
     },
     "./fn": {
-      "types": "./dist/fn/index.d.ts",
-      "import": "./dist/fn/index.js",
-      "require": "./dist/fn/index.cjs"
+      "import": {
+        "types": "./dist/fn/index.d.ts",
+        "default": "./dist/fn/index.js"
+      },
+      "require": {
+        "types": "./dist/fn/index.d.cts",
+        "default": "./dist/fn/index.cjs"
+      }
     },
     "./emitter": {
-      "types": "./dist/emitter/index.d.ts",
-      "import": "./dist/emitter/index.js",
-      "require": "./dist/emitter/index.cjs"
+      "import": {
+        "types": "./dist/emitter/index.d.ts",
+        "default": "./dist/emitter/index.js"
+      },
+      "require": {
+        "types": "./dist/emitter/index.d.cts",
+        "default": "./dist/emitter/index.cjs"
+      }
     },
     "./encode": {
-      "types": "./dist/encode/index.d.ts",
-      "import": "./dist/encode/index.js",
-      "require": "./dist/encode/index.cjs"
-    }
+      "import": {
+        "types": "./dist/encode/index.d.ts",
+        "default": "./dist/encode/index.js"
+      },
+      "require": {
+        "types": "./dist/encode/index.d.cts",
+        "default": "./dist/encode/index.cjs"
+      }
+    },
+    "./validate": {
+      "import": {
+        "types": "./dist/validate/index.d.ts",
+        "default": "./dist/validate/index.js"
+      },
+      "require": {
+        "types": "./dist/validate/index.d.cts",
+        "default": "./dist/validate/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"
@@ -220,10 +327,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "test:timezones": "TZ=Australia/Sydney vitest run tests/timezone.test.ts && TZ=America/Asuncion vitest run tests/timezone.test.ts && TZ=America/New_York vitest run tests/timezone.test.ts",
+    "lint": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "check:package": "node scripts/check-package.mjs && publint --strict && attw --pack .",
+    "prepublishOnly": "npm run build && npm run check:package"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "publint": "^0.3.25",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"

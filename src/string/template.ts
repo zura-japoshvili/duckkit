@@ -1,8 +1,13 @@
+import { hasOwnKey } from '../_internal/own'
+
 /**
  * Simple string interpolation using `{key}` placeholders.
  *
  * Replaces `{key}` tokens with values from a data object.
  * Missing keys are left as-is by default, or replaced with a fallback.
+ * Members of `Object.prototype` never count — `{toString}` or `{constructor}`
+ * are treated as missing unless the object has them as its own keys. Values
+ * inherited from other prototypes (class getters, `Object.create`) are used.
  *
  * @param str - The template string with `{key}` placeholders
  * @param data - Object containing replacement values
@@ -28,8 +33,16 @@ export function template(
   fallback?: string
 ): string {
   return str.replace(/\{(\w+)\}/g, (match, key: string) => {
-    if (key in data) return String(data[key])
+    if (hasValue(data, key)) return String(data[key])
     if (fallback !== undefined) return fallback
     return match
   })
+}
+
+const objectProto = Object.prototype as Record<string, unknown>
+
+function hasValue(data: object, key: string): boolean {
+  if (hasOwnKey(data, key)) return true
+  // Inherited: use it, unless it is just the Object.prototype member every object has
+  return key in data && (data as Record<string, unknown>)[key] !== objectProto[key]
 }

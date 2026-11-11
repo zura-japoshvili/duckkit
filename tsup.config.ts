@@ -12,6 +12,8 @@ export default defineConfig({
     'delay/index': 'src/delay/index.ts',
     'fn/index': 'src/fn/index.ts',
     'emitter/index': 'src/emitter/index.ts',
+    'encode/index': 'src/encode/index.ts',
+    'validate/index': 'src/validate/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

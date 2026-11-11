@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Creates a new object with only the specified keys.
  *
@@ -21,7 +23,7 @@ export function pick<T extends object, K extends keyof T>(
   const result = {} as Pick<T, K>
   for (const key of keys) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      result[key] = obj[key]
+      setOwn(result, key, obj[key])
     }
   }
   return result

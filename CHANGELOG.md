@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-11
+
+This release fixes the published package (several documented imports did not work) and turns
+documented bugs into fixes. Some outputs change — see **Changed**.
+
+### Fixed — packaging
+- `import { slugify } from 'duckkit'` (the first README example) failed: the root export did not include `string` or `validate`. It now includes every module
+- `duckkit/encode` pointed to a file that was never built; `duckkit/validate` (22 functions) was not published at all. Both are now built and exported
+- CommonJS consumers on `moduleResolution: node16` got ESM type declarations; `require` now resolves to `.d.cts`. Sub-path types also resolve under the old `moduleResolution: node` via `typesVersions`
+- Added `"sideEffects": false` so bundlers can tree-shake the root import
+
+### Changed
+- `number/roundTo` — rounds the decimal you wrote: `roundTo(1.005, 2)` is now `1.01` (was `1`), `roundTo(1.255, 2)` is `1.26` (was `1.25`). Throws on non-integer `decimals`. Values too large to shift (`roundTo(1e300, 10)`) are returned unchanged
+- `number/truncateTo` — no longer adds a `1e-9` epsilon, which could round up (`truncateTo(1.999999999999, 2)` was `2`, now `1.99`). Throws on non-integer `decimals`
+- `date/addMonths`, `date/addYears` — clamp to the last day of the month: Jan 31 + 1 month is Feb 28 (was Mar 3), Feb 29 + 1 year is Feb 28 (was Mar 1). The time of day is kept across daylight-saving changes, and years 0–99 are not mapped to 1900–1999
+- `async/throttle` — calls made while waiting are no longer dropped: the last one runs when the wait ends. Pass `{ trailing: false }` for the old behavior. Returns `Throttled<Args>` with `cancel()`. Windows longer than `setTimeout` allows (~24.8 days) and `ms = Infinity` work
+- `fn/curry` — works for any number of arguments (was 2 or 3; 4+ was returned uncurried). Rejected at compile time: functions with fewer than 2 parameters and functions with optional parameters (`c?: T`, `c = x`) — `fn.length` counts the first but not the second, so the step count can't be typed. At runtime, a function with `fn.length` below 2 (including wrapped ones like `memo(fn)`) throws instead of being returned uncurried. **Type break:** explicit type arguments like `curry<number, number, number>(…)` no longer compile — let TypeScript infer them
+- `string/slugify` — keeps letters from every script (Georgian, Cyrillic, CJK, …) and removes accents from Latin letters: `'Crème Brûlée'` → `'creme-brulee'` (was `'crme-brle'`), `'Привет'` → `'привет'` (was `''`). Runs of spaces, `_` and `-` become one hyphen (`'a - b'` was `'a---b'`). Full-width letters and digits become plain (`'ＡＢＣ１２３'` → `'abc123'`); symbols and fractions are still dropped (`'Duckkit™ Pro'` → `'duckkit-pro'`)
+- `string/camelCase`, `string/pascalCase` — keep existing word boundaries: `camelCase('fooBar')` is `'fooBar'` (was `'foobar'`), `pascalCase('fooBarBaz')` is `'FooBarBaz'` (was `'Foobarbaz'`)
+- `string/words`, `string/kebabCase`, `string/snakeCase`, `string/camelCase`, `string/pascalCase` — split humps in any cased script, not only A–Z: `kebabCase('grüßGott')` is `'grüß-gott'` (was `'grüßgott'`), `camelCase('приветМир')` is `'приветМир'` (was `'приветмир'`)
+- `string/titleCase` — works for any script and keeps apostrophes inside words: `"don't"` → `"Don't"` (was `"Don'T"`), `'élan'` → `'Élan'` (was `'éLan'`). Words in single quotes are still capitalized (`"'quick'"` → `"'Quick'"`)
+- `string/capitalize`, `string/titleCase` — leave Georgian unchanged; `capitalize` used to turn the first letter into Mtavruli, which Georgian only uses for all-caps text. `camelCase` and `pascalCase` still mark Georgian word boundaries with Mtavruli (`'გამარჯობა მსოფლიო'` → `'გამარჯობაᲛსოფლიო'`), as before
+- `string/randomId` — throws on a negative or non-integer `length`
+- `delay/delaySkippable` — rejects with the error when `condition` throws, instead of throwing from a timer every `pollInterval` ms
+- `isEmpty` from the root is the `validate` one (strings, arrays, objects); `duckkit/string` keeps the string-only version
+- `package.json` declares `"engines": { "node": ">=20" }`, the oldest version CI tests. npm warns on older Node; Yarn 1 refuses to install. Browsers are not affected
+
+### Fixed
+- `array/groupBy`, `array/flatGroupBy` — crashed with "push is not a function" on keys like `"constructor"` or `"toString"`
+- `array/countBy` — returned garbage like `"function Object() { [native code] }1"` for such keys
+- `"__proto__"` as a key (e.g. from `JSON.parse`) replaced the result's prototype instead of being stored as data in `groupBy`, `flatGroupBy`, `countBy`, `keyBy`, `deepClone`, `deepMerge`, `pick`, `mapKeys`, `mapValues`, `filterKeys`, `filterValues`, `invertObject`, `flattenObject`, `mergeIf`. With `deepClone(JSON.parse('{"__proto__": {"isAdmin": true}}'))`, `clone.isAdmin` was `true`
+- `string/template` — `{constructor}` or `{toString}` were filled with function source from `Object.prototype`. Values inherited from other prototypes (class getters, `Object.create`) are still used
+- `string/randomId` — characters `A`–`H` were slightly more likely (`byte % 62` bias); bytes that would cause it are now redrawn. IDs longer than 65 536 characters work
+- `string/capitalize` — split a leading emoji into a broken surrogate
+- `string/truncate`, `string/excerpt` — could return more than `maxLength` when the suffix did not fit
+- `string/truncate`, `string/excerpt` — cut characters in half: `truncate('Hi😀there', 3, '')` returned a broken surrogate (`'Hi\ud83d'`). Emoji, flags, ZWJ/skin-tone emoji and accented letters that don't fit whole are now left out (uses `Intl.Segmenter`; without it, surrogate pairs are still never split)
+- `string/excerpt` — dropped a word that ended exactly at the limit (`excerpt('Hello World foo', 14)` was `'Hello...'`, now `'Hello World...'`), and returned only the suffix for a long first word after leading spaces
+- `number/formatBytes` — negative values gave `"NaN undefined"` and values from 2^60 up gave `"… undefined"`. Now `-1 KB`, `1 EB`, up to `YB`. When rounding reaches 1024 the next unit is used (`formatBytes(1023.999)` was `"1024 B"`, now `"1 KB"`)
+- `object/mergeIf` — the type did not accept `null` (or `undefined` under `exactOptionalPropertyTypes`), although skipping them is the function's purpose
+
+### Added
+- `async/debounce` — `cancel()` and `flush()`; returns `Debounced<Args>`
+- `async/throttle` — `cancel()` and the `trailing` option
+- Types `Debounced`, `Throttled`, `Curried`
+
+### Tooling
+- `npm run check:package` — packs the package, installs the tarball and loads every entry point with `import` and `require`; checks the root export and the README function list; runs `publint` and `are-the-types-wrong`. Runs in CI, before publish, and in `prepublishOnly`
+- `npm run lint` also type-checks the tests (`tsconfig.test.json`)
+- `npm run test:timezones` — runs the date tests in Sydney, Asunción and New York time, where daylight-saving bugs show up (CI itself runs in UTC). Runs in CI and before publish
+- CI runs on Node 20, 22 and 24
+- Publish workflow uses Node 24 and npm 11.5.1+, which trusted publishing needs — with Node 22's npm 10, every publish run so far failed at `npm publish`
+- `retry` backoff test uses fake timers (was flaky under load)
+
+---
+
 ## [0.1.10] - 2026-05-29
 
 ### Fixed

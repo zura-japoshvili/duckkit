@@ -76,6 +76,24 @@ describe('delaySkippable', () => {
     await vi.advanceTimersByTimeAsync(100)
     expect(resolved).toBe(true)
     })  
+
+  it('rejects and stops polling when condition throws', async () => {
+    let calls = 0
+    const condition = () => {
+      calls++
+      if (calls === 3) throw new Error('oops')
+      return false
+    }
+    const assertion = expect(delaySkippable(1000, condition, 50)).rejects.toThrow('oops')
+    await vi.advanceTimersByTimeAsync(100)   // checks at t=0, 50, 100 — the third throws
+    await assertion
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(calls).toBe(3)                    // no polling after the error
+  })
+
+  it('rejects when condition throws on the first check', async () => {
+    await expect(delaySkippable(1000, () => { throw new Error('first') })).rejects.toThrow('first')
+  })
 })
 
 describe('delayWithAbort', () => {

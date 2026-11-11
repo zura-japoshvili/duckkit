@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Creates a new object with all values transformed by `fn`. Keys are unchanged.
  *
@@ -23,7 +25,7 @@ export function mapValues<T, U>(
 ): Record<string, U> {
   const result: Record<string, U> = {}
   for (const key of Object.keys(obj)) {
-    result[key] = fn(obj[key] as T, key)
+    setOwn(result, key, fn(obj[key] as T, key))
   }
   return result
 }

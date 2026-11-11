@@ -17,13 +17,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
+
+      # Trusted publishing (OIDC, no token) needs npm 11.5.1+; older npm fails with ENEEDAUTH
+      - run: npm install -g npm@^11.5.1
+      - run: npm --version
 
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      - run: npm run test:timezones
       - run: npm run build
+      - run: npm run check:package
 
       - run: npm publish

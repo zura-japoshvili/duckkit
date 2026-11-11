@@ -1,3 +1,5 @@
+import { hasOwnKey, setOwn } from '../_internal/own'
+
 /**
  * Groups array items by a key returned from `fn`.
  *
@@ -27,10 +29,8 @@ export function groupBy<T, K extends string>(
   const result = {} as Partial<Record<K, T[]>>
   for (const item of arr) {
     const key = fn(item)
-    if (!result[key]) {
-      result[key] = []
-    }
-    result[key]!.push(item)
+    if (hasOwnKey(result, key)) result[key]!.push(item)
+    else setOwn(result, key, [item])
   }
   return result
 }

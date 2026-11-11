@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Flips the keys and values of an object.
  *
@@ -19,7 +21,7 @@ export function invertObject<K extends string, V extends string>(
 ): Record<V, K> {
   const result = {} as Record<V, K>
   for (const key of Object.keys(obj) as K[]) {
-    result[obj[key]] = key
+    setOwn(result, obj[key], key)
   }
   return result
 }

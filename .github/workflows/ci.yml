@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20, 22]
+        node-version: [20, 22, 24]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,4 +24,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # Daylight-saving bugs only show up in some time zones; CI runs in UTC
+      - run: npm run test:timezones
       - run: npm run build
+      # Unit tests import from src/; this checks the packed package users actually install
+      - run: npm run check:package

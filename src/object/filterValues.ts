@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Creates a new object keeping only entries where the value passes the predicate.
  *
@@ -20,7 +22,7 @@ export function filterValues<T>(
   const result: Record<string, T> = {}
   for (const key of Object.keys(obj)) {
     const value = obj[key] as T
-    if (predicate(value, key)) result[key] = value
+    if (predicate(value, key)) setOwn(result, key, value)
   }
   return result
 }

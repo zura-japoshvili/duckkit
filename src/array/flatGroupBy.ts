@@ -1,3 +1,5 @@
+import { hasOwnKey, setOwn } from '../_internal/own'
+
 /**
  * Groups array items by multiple keys per item.
  *
@@ -31,10 +33,8 @@ export function flatGroupBy<T, K extends string>(
   for (const item of arr) {
     const keys = fn(item)
     for (const key of keys) {
-      if (!result[key]) {
-        result[key] = []
-      }
-      result[key]!.push(item)
+      if (hasOwnKey(result, key)) result[key]!.push(item)
+      else setOwn(result, key, [item])
     }
   }
   return result

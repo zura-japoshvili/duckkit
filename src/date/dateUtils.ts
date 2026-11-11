@@ -80,35 +80,46 @@ export function isSameDay(a: Date, b: Date): boolean {
 /**
  * Adds a specified number of months to a date. Non-mutating.
  *
- * Handles month overflow — adding 1 month to Jan 31 gives Feb 28/29.
+ * If the day does not exist in the target month, the last day of that month
+ * is used — Jan 31 + 1 month is Feb 28 (Feb 29 in a leap year), never March.
+ * The time of day is kept.
  *
  * @param date - The base date
  * @param months - Number of months to add (use negative to subtract)
  * @returns A new Date with the months added
  *
  * @example
- * addMonths(new Date('2026-01-31'), 1) // 2026-02-28
- * addMonths(new Date('2026-03-15'), 3) // 2026-06-15
+ * addMonths(new Date(2026, 0, 31), 1) // 2026-02-28
+ * addMonths(new Date(2026, 2, 31), 1) // 2026-04-30
+ * addMonths(new Date(2026, 2, 15), 3) // 2026-06-15
  */
 export function addMonths(date: Date, months: number): Date {
   const result = new Date(date)
-  result.setMonth(result.getMonth() + months)
+  const targetMonth = Math.trunc(result.getMonth() + months)
+  // Last day of the target month. Computed in UTC so daylight saving can't shift it, and
+  // with setUTCFullYear so years 0–99 are not mapped to 1900–1999 like new Date(y, m, d) does.
+  const probe = new Date(0)
+  probe.setUTCFullYear(result.getFullYear(), targetMonth + 1, 0)
+  // Month and day in one call: the time of day never passes through another date
+  // (e.g. a 1st of the month that has a daylight-saving gap at that hour)
+  result.setMonth(targetMonth, Math.min(result.getDate(), probe.getUTCDate()))
   return result
 }
 
 /**
  * Adds a specified number of years to a date. Non-mutating.
  *
+ * Feb 29 + 1 year is Feb 28, never March 1. The time of day is kept.
+ *
  * @param date - The base date
  * @param years - Number of years to add (use negative to subtract)
  * @returns A new Date with the years added
  *
  * @example
- * addYears(new Date('2026-05-13'), 1) // 2027-05-13
- * addYears(new Date('2026-05-13'), -2) // 2024-05-13
+ * addYears(new Date(2026, 4, 13), 1)  // 2027-05-13
+ * addYears(new Date(2026, 4, 13), -2) // 2024-05-13
+ * addYears(new Date(2024, 1, 29), 1)  // 2025-02-28
  */
 export function addYears(date: Date, years: number): Date {
-  const result = new Date(date)
-  result.setFullYear(result.getFullYear() + years)
-  return result
+  return addMonths(date, Math.trunc(years) * 12)
 }

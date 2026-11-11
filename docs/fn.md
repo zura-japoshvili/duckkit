@@ -127,11 +127,11 @@ await process('abc123')
 
 ## curry
 
-Converts a multi-argument function into a chain of single-argument functions. Supports 2- and 3-argument functions.
+Converts a multi-argument function into a chain of single-argument functions. Works for any number of arguments (2 or more), and every step is typed by its parameter.
 
 ```typescript
-curry(fn: (a: A, b: B) => R): (a: A) => (b: B) => R
-curry(fn: (a: A, b: B, c: C) => R): (a: A) => (b: B) => (c: C) => R
+curry<P extends [unknown, unknown, ...unknown[]], R>(fn: (...args: P) => R): Curried<P, R>
+// Curried<[A, B, C], R> = (a: A) => (b: B) => (c: C) => R
 ```
 
 ```typescript
@@ -147,11 +147,20 @@ const clamp = curry((min: number, max: number, value: number) =>
 const clamp0to100 = clamp(0)(100)
 clamp0to100(150)  // 100
 clamp0to100(-5)   // 0
+
+// 4+ args
+const volume = curry((l: number, w: number, h: number, scale: number) => l * w * h * scale)
+volume(2)(3)(4)(10)  // 240
 ```
 
-> **Only works reliably without default params or rest args:** `curry` uses `fn.length` which stops counting at the first default parameter. A function like `(a, b = 5) => ...` reports a length of 1, so `curry` returns it uncurried — calling it with one argument runs it immediately instead of returning a function.
-
-> **4+ arg functions are returned as-is.**
+> **The number of steps is `fn.length`:** it stops counting at the first parameter with a default and never counts a rest parameter.
+>
+> - Optional parameters — `c?: T` or `c = x` — are rejected at compile time. `fn.length` counts the first but not the second, and TypeScript types both as `c?: T`, so the step count can't be known.
+> - A function with fewer than 2 parameters is rejected: a type error at compile time, and `curry` throws at runtime.
+> - `(a, b, ...rest) => …` curries as 2 steps; `rest` stays empty.
+> - Wrapped functions such as `memo(fn)` or `once(fn)` report `fn.length` 0, so `curry` throws. Curry the original function, then wrap the result.
+>
+> **Type arguments are inferred:** `curry<number, number, number>(…)` from 0.1.x no longer compiles — drop the type arguments.
 
 ---
 

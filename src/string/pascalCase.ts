@@ -1,7 +1,12 @@
+import { upperFirst } from '../_internal/case'
+import { words } from './words'
+
 /**
  * Converts a string to PascalCase.
  *
- * Handles snake_case, kebab-case, spaces, and mixed inputs.
+ * Handles snake_case, kebab-case, spaces, camelCase, PascalCase and mixed inputs —
+ * the string is split with `words()`, so existing word boundaries are kept, in any
+ * cased script. In Georgian the boundaries are marked with Mtavruli (its capital form).
  * Useful for component names, class names, and TypeScript types.
  *
  * @param str - The string to convert
@@ -14,8 +19,5 @@
  * pascalCase('fooBarBaz')    // "FooBarBaz"
  */
 export function pascalCase(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[-_\s]+(.)/g, (_, char: string) => char.toUpperCase())
-    .replace(/^(.)/, (char: string) => char.toUpperCase())
+  return words(str).map(upperFirst).join('')
 }

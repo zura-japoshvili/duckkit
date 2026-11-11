@@ -416,15 +416,18 @@ objectDiff({ a: 1, b: 2 }, { a: 1 })
 
 ## mergeIf
 
-Like `deepMerge` but skips keys where the override value is `null` or `undefined`. Base values are preserved when the override has nothing meaningful to contribute.
+Shallow merge that skips keys where the override value is `null` or `undefined`. Base values are preserved when the override has nothing meaningful to contribute.
 
 ```typescript
-mergeIf<T>(base: T, override: Partial<T>): T
+mergeIf<T>(base: T, override: { [K in keyof T]?: T[K] | null | undefined }): T
 ```
 
 ```typescript
-mergeIf({ name: 'Zura', role: 'admin' }, { role: undefined, age: 25 })
-// { name: 'Zura', role: 'admin', age: 25 } — role preserved ✅
+mergeIf({ name: 'Zura', role: 'admin' }, { name: 'Zurab', role: undefined })
+// { name: 'Zurab', role: 'admin' } — role preserved ✅
+
+mergeIf({ name: 'Zura', role: 'admin' }, { role: null })
+// { name: 'Zura', role: 'admin' } — null is skipped too ✅
 
 mergeIf({ a: 1 }, { a: 0 })
 // { a: 0 } — 0 is kept, only null/undefined are skipped ✅

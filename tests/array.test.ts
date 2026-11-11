@@ -740,3 +740,45 @@ describe('union', () => {
     expect(union([3, 1], [2, 4])).toEqual([3, 1, 2, 4])
   })
 })
+describe('keys named like Object.prototype members', () => {
+  // Before 0.2.0 these crashed (groupBy: "push is not a function") or produced garbage
+  // (countBy: "function Object() { [native code] }1") because `result[key]` read the
+  // inherited member, and "__proto__" replaced the result's prototype.
+  const words = ['constructor', 'toString', '__proto__', 'constructor', 'hasOwnProperty']
+
+  it('groupBy groups them like any other key', () => {
+    const grouped = groupBy(words, w => w)
+    expect(Object.entries(grouped)).toEqual([
+      ['constructor', ['constructor', 'constructor']],
+      ['toString', ['toString']],
+      ['__proto__', ['__proto__']],
+      ['hasOwnProperty', ['hasOwnProperty']],
+    ])
+    expect(Object.getPrototypeOf(grouped)).toBe(Object.prototype)
+  })
+
+  it('flatGroupBy groups them like any other key', () => {
+    const grouped = flatGroupBy([{ tags: ['constructor', '__proto__'] }, { tags: ['constructor'] }], x => x.tags)
+    expect(Object.keys(grouped)).toEqual(['constructor', '__proto__'])
+    expect(Object.getOwnPropertyDescriptor(grouped, 'constructor')?.value).toHaveLength(2)
+    expect(Object.getOwnPropertyDescriptor(grouped, '__proto__')?.value).toHaveLength(1)
+    expect(Object.getPrototypeOf(grouped)).toBe(Object.prototype)
+  })
+
+  it('countBy counts them like any other key', () => {
+    expect(Object.entries(countBy(words, w => w))).toEqual([
+      ['constructor', 2],
+      ['toString', 1],
+      ['__proto__', 1],
+      ['hasOwnProperty', 1],
+    ])
+  })
+
+  it('keyBy stores "__proto__" as a key instead of replacing the prototype', () => {
+    const item = { id: '__proto__', isAdmin: true }
+    const byId = keyBy([item], x => x.id)
+    expect(Object.getOwnPropertyDescriptor(byId, '__proto__')?.value).toBe(item)
+    expect(Object.getPrototypeOf(byId)).toBe(Object.prototype)
+    expect((byId as Record<string, unknown>).isAdmin).toBeUndefined()
+  })
+})

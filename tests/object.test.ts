@@ -664,3 +664,36 @@ describe('hasOwn', () => {
     expect(hasOwn(obj, 'a')).toBe(true)
   })
 })
+describe('own "__proto__" keys from JSON input', () => {
+  // JSON.parse creates "__proto__" as a normal own key. A plain `result[key] = value`
+  // copy would instead swap the result's prototype, so `result.isAdmin` became true.
+  const fromJson = () => JSON.parse('{"__proto__": {"isAdmin": true}, "name": "x"}') as Record<string, unknown>
+
+  const expectDataNotPrototype = (result: object) => {
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
+    expect((result as Record<string, unknown>).isAdmin).toBeUndefined()
+    expect(Object.keys(result)).toContain('__proto__')
+  }
+
+  it('deepClone', () => expectDataNotPrototype(deepClone(fromJson())))
+  it('deepMerge into an empty object', () => expectDataNotPrototype(deepMerge({}, fromJson())))
+  it('deepMerge into an object with data', () => expectDataNotPrototype(deepMerge({ a: 1 }, fromJson())))
+  it('pick', () => expectDataNotPrototype(pick(fromJson(), ['__proto__'])))
+  it('mapValues', () => expectDataNotPrototype(mapValues(fromJson(), v => v)))
+  it('mapKeys', () => expectDataNotPrototype(mapKeys({ isAdmin: true }, () => '__proto__')))
+  it('filterKeys', () => expectDataNotPrototype(filterKeys(fromJson(), () => true)))
+  it('filterValues', () => expectDataNotPrototype(filterValues(fromJson(), () => true)))
+  it('mergeIf', () => expectDataNotPrototype(mergeIf({ name: 'y' } as Record<string, unknown>, fromJson())))
+  it('flattenObject', () => expectDataNotPrototype(flattenObject(JSON.parse('{"__proto__": 1}'))))
+
+  it('invertObject', () => {
+    const inverted = invertObject({ admin: '__proto__' })
+    expect(Object.getOwnPropertyDescriptor(inverted, '__proto__')?.value).toBe('admin')
+    expect(Object.getPrototypeOf(inverted)).toBe(Object.prototype)
+  })
+
+  it('deepClone keeps the "__proto__" value as data', () => {
+    const clone = deepClone(fromJson())
+    expect(Object.getOwnPropertyDescriptor(clone, '__proto__')?.value).toEqual({ isAdmin: true })
+  })
+})

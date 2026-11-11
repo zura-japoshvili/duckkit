@@ -80,23 +80,27 @@ roundTo(1.235, 2)    // 1.24
 roundTo(1.7)         // 2    — defaults to 0 decimals
 roundTo(1234.5, -2)  // 1200 — negative decimals round to tens/hundreds
 roundTo(-1.567, 2)   // -1.57
+roundTo(1.005, 2)    // 1.01
+roundTo(0.1 + 0.2, 2) // 0.3
 ```
 
-> **Floating point can cause incorrect rounding at midpoints:** `roundTo` multiplies by a power of 10 before calling `Math.round`. Due to JS floating point, some `x.xx5` midpoints are represented just *below* their exact value — `1.005 * 100 = 100.49999999999999` — and round the wrong way. (Not all midpoints are affected: `1.045 * 100` happens to be exactly `104.5`, so `roundTo(1.045, 2)` correctly gives `1.05`.)
+**Midpoints round the way you wrote them.** The common `Math.round(x * 100) / 100` gets some midpoints wrong, because binary floating point stores them just below `.5` — `1.005 * 100` is `100.49999999999999`. `roundTo` moves the decimal point in the number's decimal form instead of multiplying, so:
+
+```typescript
+roundTo(1.005, 2)  // 1.01 ✅ — Math.round(1.005 * 100) / 100 gives 1
+roundTo(1.015, 2)  // 1.02 ✅
+roundTo(1.255, 2)  // 1.26 ✅
+```
+
+> **Halves go toward +Infinity, like `Math.round`:** `roundTo(2.5)` is `3`, `roundTo(-2.5)` is `-2`.
 >
-> ```typescript
-> roundTo(1.005, 2)  // 1    ❌ — expected 1.01
-> roundTo(1.015, 2)  // 1.01 ❌ — expected 1.02
-> roundTo(1.255, 2)  // 1.25 ❌ — expected 1.26
-> ```
->
-> For financial values where exact midpoint rounding is critical, use `Number.EPSILON`-compensated rounding or a dedicated library. For display purposes, the error is typically invisible.
+> **`decimals` must be an integer** — anything else throws. `NaN` and `±Infinity` are returned unchanged.
 
 ---
 
 ## truncateTo
 
-Truncates a number to a specified number of decimal places without rounding. For positive numbers the result is never rounded up. A tiny epsilon (`1e-9`) is added before flooring to absorb floating-point representation error (e.g. `1.005` stored as `1.00499…`), so values sitting a hair below a boundary still truncate cleanly.
+Cuts a number down to a specified number of decimal places without rounding up. The result is never larger than the input. Like `roundTo`, it works on the decimal number you wrote, not its binary approximation, so `truncateTo(0.29, 2)` is `0.29` (not `0.28`) and `truncateTo(1.999999999999, 2)` is `1.99` (not `2`).
 
 ```typescript
 truncateTo(value: number, decimals?: number): number
@@ -117,21 +121,16 @@ truncateTo(5.059, 2) // 5.05 — floors
 
 Use `truncateTo` for financial values, win totals, or anywhere you must not overstate a value.
 
-> **Negative numbers floor toward −∞, not toward zero:** The implementation uses `Math.floor`, which floors toward negative infinity. For negative inputs, this means the result is more negative than the input — the opposite of "toward zero".
+> **Negative numbers floor toward −∞, not toward zero:** so the result stays "never larger than the input" for negatives too.
 >
 > ```typescript
-> truncateTo(-5.999, 2)  // -6.00 ❌ — floors to -6, not -5.99
-> truncateTo(-5.059, 2)  // -5.06 ❌ — floors to -5.06, not -5.05
+> truncateTo(-5.999, 2)  // -6    — not -5.99
+> truncateTo(-5.059, 2)  // -5.06 — not -5.05
 > ```
 >
-> If you need true truncation toward zero for negative numbers, use `Math.trunc` manually:
+> If you need truncation toward zero for negative numbers, truncate the absolute value: `Math.sign(x) * truncateTo(Math.abs(x), 2)`.
 >
-> ```typescript
-> function truncateTowardZero(value: number, decimals: number): number {
->   const factor = Math.pow(10, decimals)
->   return Math.trunc(value * factor) / factor
-> }
-> ```
+> **`decimals` must be an integer** — anything else throws. `NaN` and `±Infinity` are returned unchanged.
 
 ---
 
@@ -370,18 +369,12 @@ formatBytes(1234567)     // "1.18 MB"
 formatBytes(1234567, 0)  // "1 MB" — 0 decimal places
 ```
 
-Supports B, KB, MB, GB, TB, PB.
+Supports B, KB, MB, GB, TB, PB, EB, ZB, YB (1 KB = 1024 B).
 
-> **Negative bytes returns `"NaN undefined"`:** `Math.log` of a negative number is `NaN`, making the unit index `NaN` and `units[NaN]` undefined.
->
-> ```typescript
-> formatBytes(-1024)  // "NaN undefined" ❌
-> ```
-
-> **Values beyond PB return `"... undefined"`:** The `units` array has 6 entries (B through PB). Any value ≥ 2^60 (~1.15 exabytes) maps to index 6 or higher, which is out of bounds.
->
-> ```typescript
-> formatBytes(2 ** 60)  // "1 undefined" ❌
-> ```
->
-> If either case is possible in your app, guard with a check before calling: `bytes > 0 && bytes < 2 ** 60`.
+```typescript
+formatBytes(-1024)    // "-1 KB" — sign kept
+formatBytes(2 ** 60)  // "1 EB"
+formatBytes(0.5)      // "0.5 B" — under 1 stays in bytes
+formatBytes(NaN)      // "NaN B"
+formatBytes(1023.999) // "1 KB" — when rounding reaches 1024, the next unit is used
+```

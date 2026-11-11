@@ -1,3 +1,5 @@
+import { setOwn } from '../_internal/own'
+
 /**
  * Creates a true deep clone of a value.
  *
@@ -35,7 +37,7 @@ export function deepClone<T>(value: T): T {
     if (proto === null || proto === Object.prototype) {
       const result: Record<string, unknown> = {}
       for (const key of Object.keys(value)) {
-        result[key] = deepClone((value as Record<string, unknown>)[key])
+        setOwn(result, key, deepClone((value as Record<string, unknown>)[key]))
       }
       return result as T
     }

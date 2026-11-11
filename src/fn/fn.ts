@@ -200,8 +200,34 @@ export function composeAsync(...fns: Function[]): (input: unknown) => Promise<un
 // ─── curry ───────────────────────────────────────────────────────────────────
 
 /**
+ * The curried form of a function with parameters `P` and result `R`:
+ * `Curried<[number, string], boolean>` is `(a: number) => (b: string) => boolean`.
+ */
+export type Curried<P extends unknown[], R> = P extends [infer First, ...infer Rest]
+  ? (arg: First) => Rest extends [] ? R : Curried<Rest, R>
+  : R
+
+/**
+ * `unknown` (no constraint) when `P` has no optional parameters, `never` otherwise.
+ * `curry` counts steps with `fn.length`, which counts `c?: T` but not `c = x` — the
+ * type of both is `c?: T`, so the step count of an optional parameter cannot be known.
+ */
+type NoOptionalParams<P extends unknown[]> = P['length'] extends Required<P>['length'] ? unknown : never
+
+/**
  * Converts a multi-argument function into a chain of single-argument functions.
- * Supports 2- and 3-argument functions.
+ * Works for any number of arguments (2 or more), fully typed.
+ *
+ * The number of steps is the function's declared parameter count (`fn.length`), so:
+ * - optional parameters (`c?: T` or `c = x`) are rejected at compile time — `fn.length`
+ *   counts the first but not the second, and the type can't tell them apart;
+ * - functions with fewer than 2 counted parameters are rejected — a type error,
+ *   and a thrown error at runtime;
+ * - `(a, b, ...rest) => …` curries as 2 steps and `rest` stays empty;
+ * - wrapped functions such as `memo(fn)` or `once(fn)` report `fn.length` 0 and throw —
+ *   curry the original function, then wrap the result.
+ *
+ * @throws If `fn` declares fewer than 2 parameters
  *
  * @example
  * const multiply = curry((factor: number, value: number) => value * factor)
@@ -213,17 +239,26 @@ export function composeAsync(...fns: Function[]): (input: unknown) => Promise<un
  * )
  * const clamp0to100 = clamp(0)(100)
  * clamp0to100(150)  // 100
+ *
+ * @example
+ * const volume = curry((l: number, w: number, h: number, scale: number) => l * w * h * scale)
+ * volume(2)(3)(4)(10)  // 240
  */
-export function curry<A, B, R>(
-  fn: (a: A, b: B) => R
-): (a: A) => (b: B) => R
-export function curry<A, B, C, R>(
-  fn: (a: A, b: B, c: C) => R
-): (a: A) => (b: B) => (c: C) => R
-export function curry(fn: Function): Function {
-  if (fn.length === 2) return (a: unknown) => (b: unknown) => fn(a, b)
-  if (fn.length === 3) return (a: unknown) => (b: unknown) => (c: unknown) => fn(a, b, c)
-  return fn
+export function curry<P extends [unknown, unknown, ...unknown[]], R>(
+  fn: ((...args: P) => R) & NoOptionalParams<P>
+): Curried<P, R> {
+  const arity = fn.length
+  if (arity < 2) {
+    throw new Error(
+      'curry: fn must declare at least 2 parameters (fn.length is ' + arity + '; parameters with ' +
+        'defaults and rest parameters are not counted, and wrapped functions like memo(fn) report 0)'
+    )
+  }
+  const collect = (args: unknown[]) => (arg: unknown): unknown => {
+    const next = [...args, arg]
+    return next.length >= arity ? fn(...(next as P)) : collect(next)
+  }
+  return collect([]) as Curried<P, R>
 }
 
 // ─── tap ─────────────────────────────────────────────────────────────────────

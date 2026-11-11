@@ -43,6 +43,119 @@ describe('throttle', () => {
     expect(fn).toHaveBeenCalledWith('hello', 42)
     vi.useRealTimers()
   })
+
+  it('runs the last call made during the wait once it ends (trailing)', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled('a')
+    throttled('b')
+    throttled('c')
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(100)
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(fn).toHaveBeenLastCalledWith('c')
+    vi.useRealTimers()
+  })
+
+  it('keeps the interval after a trailing call', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled('a')                 // t=0   runs
+    vi.advanceTimersByTime(50)
+    throttled('b')                 // t=50  pending
+    vi.advanceTimersByTime(50)     // t=100 trailing 'b' runs
+    expect(fn).toHaveBeenCalledTimes(2)
+    vi.advanceTimersByTime(50)
+    throttled('c')                 // t=150 only 50ms since 'b' — pending
+    expect(fn).toHaveBeenCalledTimes(2)
+    vi.advanceTimersByTime(50)     // t=200 'c' runs
+    expect(fn).toHaveBeenCalledTimes(3)
+    expect(fn).toHaveBeenLastCalledWith('c')
+    vi.useRealTimers()
+  })
+
+  it('does not add a trailing call when nothing was called during the wait', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled()
+    vi.advanceTimersByTime(500)
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('{ trailing: false } drops calls made during the wait', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100, { trailing: false })
+    throttled('a')
+    throttled('b')
+    vi.advanceTimersByTime(500)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenLastCalledWith('a')
+    vi.useRealTimers()
+  })
+
+  it('cancel() drops the pending call and lets the next call run immediately', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled('a')
+    throttled('b')
+    throttled.cancel()
+    vi.advanceTimersByTime(500)
+    expect(fn).toHaveBeenCalledTimes(1)
+    throttled('c')
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(fn).toHaveBeenLastCalledWith('c')
+    vi.useRealTimers()
+  })
+
+  it('waits for windows longer than setTimeout allows (~24.8 days)', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const day = 24 * 3600 * 1000
+    const throttled = throttle(fn, 30 * day)
+    throttled('a')
+    throttled('b')
+    vi.advanceTimersByTime(day)
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(29 * day)
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(fn).toHaveBeenLastCalledWith('b')
+    vi.useRealTimers()
+  })
+
+  it('with ms = Infinity runs once and never schedules a trailing call', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const throttled = throttle(fn, Infinity)
+    throttled('a')
+    throttled('b')
+    vi.advanceTimersByTime(365 * 24 * 3600 * 1000)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+    vi.useRealTimers()
+  })
+
+  it('accepts { trailing: undefined } (exactOptionalPropertyTypes)', () => {
+    const options: { trailing?: boolean | undefined } = { trailing: undefined }
+    expect(typeof throttle(() => {}, 100, options)).toBe('function')
+  })
+
+  it('runs immediately again if the system clock moves backward', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(10_000)
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100)
+    throttled('a')
+    vi.setSystemTime(5_000)
+    throttled('b')
+    expect(fn).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
 })
 
 describe('retry', () => {
@@ -98,23 +211,24 @@ describe('retry — validation', () => {
  
 describe('retry — backoff delay sequence', () => {
   it('with times=3 and backoff, waits delayMs then delayMs*2 between attempts', async () => {
-    const delays: number[] = []
-    let lastTime = Date.now()
-    let attempt = 0
- 
-    const fn = vi.fn(async () => {
-      const now = Date.now()
-      if (attempt > 0) delays.push(now - lastTime)
-      lastTime = now
-      attempt++
-      throw new Error('always fails')
-    })
- 
-    await expect(retry(fn, 3, 50, true)).rejects.toThrow('always fails')
-    expect(fn).toHaveBeenCalledTimes(3)
-    expect(delays).toHaveLength(2)
-    // Allow timer slack — just confirm the second delay is roughly double
-    expect(delays[1]!).toBeGreaterThan(delays[0]! * 1.5)
+    // Fake timers make the delays exact — real timers made this test flaky on busy machines.
+    vi.useFakeTimers()
+    try {
+      const calledAt: number[] = []
+      const fn = vi.fn(async () => {
+        calledAt.push(Date.now())
+        throw new Error('always fails')
+      })
+
+      const assertion = expect(retry(fn, 3, 50, true)).rejects.toThrow('always fails')
+      await vi.runAllTimersAsync()
+      await assertion
+
+      expect(fn).toHaveBeenCalledTimes(3)
+      expect([calledAt[1]! - calledAt[0]!, calledAt[2]! - calledAt[1]!]).toEqual([50, 100])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -466,6 +580,56 @@ describe('debounce', () => {
     debounced('third')
     vi.advanceTimersByTime(100)
     expect(fn).toHaveBeenCalledWith('third')
+    vi.useRealTimers()
+  })
+
+  it('cancel() drops the pending call', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+    debounced('x')
+    debounced.cancel()
+    vi.advanceTimersByTime(500)
+    expect(fn).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('flush() runs the pending call now, with the last args, and only once', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+    debounced('a')
+    debounced('b')
+    debounced.flush()
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('b')
+    vi.advanceTimersByTime(500)
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('flush() does nothing when no call is pending', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+    debounced.flush()
+    debounced('a')
+    vi.advanceTimersByTime(100)
+    debounced.flush()
+    expect(fn).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('works normally after cancel()', () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+    debounced('a')
+    debounced.cancel()
+    debounced('b')
+    vi.advanceTimersByTime(100)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('b')
     vi.useRealTimers()
   })
 

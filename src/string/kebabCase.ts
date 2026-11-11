@@ -14,8 +14,8 @@
  */
 export function kebabCase(str: string): string {
   return str
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
-    .replace(/([a-z\d])([A-Z])/g, '$1-$2')
+    .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1-$2')
+    .replace(/([\p{Ll}\d])(\p{Lu})/gu, '$1-$2')
     .replace(/[\s_]+/g, '-')
     .toLowerCase()
     .replace(/^-+|-+$/g, '')

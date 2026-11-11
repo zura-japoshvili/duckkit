@@ -23,7 +23,7 @@ A comprehensive TypeScript utility library that provides:
 - **Typed `groupBy`** — returns `Partial<Record<K, T[]>>`, not `Dictionary<any>`
 - **`deepClone` that preserves Dates** — unlike the `JSON.parse(JSON.stringify(...))` trick
 - **`safe` / Result type** — try/catch as a typed value, no untyped throws
-- **`delaySkippable`** — cancellable async wait, unique to duckkit
+- **`delaySkippable`** — an async wait that ends early when a condition becomes true
 - **Typed event emitter** — payload types enforced at compile time
 - **Function composition** — `pipeline`, `compose`, `curry`, `tap`, `when` with full type inference
 - **Encoding utilities** — Base64, Base64URL, Hex, URI, JSON — all with safe error handling
@@ -36,6 +36,8 @@ A comprehensive TypeScript utility library that provides:
 ```bash
 npm install duckkit
 ```
+
+Works in every current browser and in Node.js 20+.
 
 ---
 
@@ -72,7 +74,7 @@ npm install duckkit
 - `pick`, `omit` — removed keys disappear from the TypeScript type entirely
 - `deepFreeze` — recursively freezes and returns `DeepReadonly<T>`
 - `objectDiff` — returns keys that changed between two objects
-- `mergeIf` — merges only defined values, skips `null` and `undefined`
+- `mergeIf` — shallow merge that skips `null` and `undefined` values
 - `hasOwn` — safe typed wrapper for `Object.hasOwn`
 - `flattenObject`, `unflattenObject`, `invertObject`
 - `mapKeys`, `mapValues`, `filterKeys`, `filterValues`
@@ -82,7 +84,8 @@ npm install duckkit
 - `safe` / `safeAsync` — try/catch as a typed `Result` value
 - `retry` with optional exponential backoff
 - `memo` / `memoAsync` with `maxSize` cache eviction
-- `debounce`, `throttle`, `once`, `defer`
+- `debounce` with `cancel()` / `flush()`, `throttle` with a trailing call and `cancel()`
+- `once`, `defer`
 - `parallel` with concurrency limit, `sequential`
 - `timeout` — races a promise against a timer
 
@@ -90,21 +93,21 @@ npm install duckkit
 - `timeAgo` — human-readable relative time ("3 minutes ago")
 - `formatDate` — token-based formatting (`MMM D, YYYY`, `HH:mm:ss`)
 - `formatDuration` — `3661` → `"1h 1m 1s"`
-- `addDays`, `addMonths`, `addYears`, `subDays`, `daysBetween`
+- `addDays`, `addMonths`, `addYears`, `subDays`, `daysBetween` — month ends are clamped (Jan 31 + 1 month is Feb 28)
 - `startOfDay`, `endOfDay`, `startOfWeek`, `startOfMonth`
 - `isSameDay`, `isBefore`, `isAfter`
 - `isToday`, `isYesterday`, `isWeekend`, `isThisWeek`, `isThisYear`
 
 ### Number Utilities
 - `clamp`, `lerp`, `normalize` — common math for animations and game dev
-- `roundTo`, `truncateTo` — decimal precision without floating-point surprises
-- `formatBytes` — `1048576` → `"1 MB"`
+- `roundTo`, `truncateTo` — round the decimal you wrote: `roundTo(1.005, 2)` is `1.01`, not `1`
+- `formatBytes` — `1048576` → `"1 MB"`, B through YB
 - `toOrdinal` — `21` → `"21st"`
 - `toRoman`, `formatNumber`, `randomInt`, `inRange`, `average`
 
 ### String Utilities
 - Case conversion: `camelCase`, `snakeCase`, `kebabCase`, `pascalCase`, `titleCase`
-- `slugify` — URL-safe slug generation
+- `slugify` — slugs in any language (`"Crème Brûlée"` → `"creme-brulee"`, Georgian and Cyrillic kept)
 - `mask` — `"4242424242424242"` → `"************4242"`
 - `escapeHtml` / `unescapeHtml` — XSS-safe HTML encoding
 - `template` — `"Hello {name}!"` interpolation
@@ -114,7 +117,7 @@ npm install duckkit
 
 ### Delay Utilities
 - `delay` — simple `await delay(1000)`
-- `delaySkippable` — resolves early if a condition becomes true (unique to duckkit)
+- `delaySkippable` — resolves early if a condition becomes true
 - `delayWithAbort` — native `AbortController` integration
 - `repeat` — call a function N times with a delay between each
 
@@ -141,7 +144,7 @@ npm install duckkit
 ### Function Composition
 - `pipeline` / `compose` — reusable typed composed functions
 - `pipelineAsync` / `composeAsync` — async steps, sync and async freely mixed
-- `curry` — partial application with full type inference
+- `curry` — partial application for any number of arguments, with full type inference
 - `tap` — side effects inside a pipeline without breaking the chain
 - `when` — conditionally apply a transform
 
@@ -152,13 +155,16 @@ npm install duckkit
 ### Typed `groupBy` — not `any`
 
 ```typescript
-// lodash — returns Dictionary<User[]>, basically any
+// lodash — returns Dictionary<User[]>: any string key compiles,
+// and a group that may not exist is typed as always there
 const grouped = _.groupBy(users, x => x.country)
+grouped.GEE[0].name    // compiles — a typo that crashes at runtime
 
 // duckkit — returns Partial<Record<"GE" | "US", User[]>>
 const grouped = groupBy(users, x => x.country)
-grouped.GE?.[0]?.name  // string | undefined ✅ — no any, and the type forces
-                       // you to guard the key, since a group may be absent
+grouped.GE?.[0]?.name  // string | undefined ✅ — the type forces you to
+                       // guard the key, since a group may be absent
+grouped.GEE            // ❌ TypeScript error — not a known key
 ```
 
 ### `deepClone` that preserves `Date` objects

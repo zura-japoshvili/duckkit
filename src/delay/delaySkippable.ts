@@ -11,7 +11,8 @@
  * @param ms - Maximum duration to wait in milliseconds
  * @param condition - Function that returns `true` to skip the remaining delay
  * @param pollInterval - How often to check the condition in ms (default: 50)
- * @returns A promise that resolves when done or skipped
+ * @returns A promise that resolves when done or skipped, and rejects with the
+ *   error if `condition` throws (polling stops)
  *
  * @example
  * let skip = false
@@ -29,7 +30,8 @@ export function delaySkippable(
   condition: () => boolean,
   pollInterval: number = 50
 ): Promise<void> {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
+    // A throw here rejects the promise (the Promise constructor catches it)
     if (condition()) {
       resolve()
       return
@@ -41,7 +43,17 @@ export function delaySkippable(
     }, ms)
 
     const poll = setInterval(() => {
-      if (condition()) {
+      let skip: boolean
+      try {
+        skip = condition()
+      } catch (error) {
+        // Stop polling and reject, instead of throwing from a timer every pollInterval ms
+        clearTimeout(timer)
+        clearInterval(poll)
+        reject(error)
+        return
+      }
+      if (skip) {
         clearTimeout(timer)
         clearInterval(poll)
         resolve()
