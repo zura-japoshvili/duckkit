@@ -7,8 +7,8 @@ const GEORGIAN = /\p{Script=Georgian}/u
 /**
  * Uppercases a character that starts a word in prose (`capitalize`, `titleCase`).
  *
- * Georgian is returned unchanged: `'ა'.toUpperCase()` gives Mtavruli (`'Ა'`),
- * which Georgian uses only for all-caps text, never to start a word.
+ * Georgian is returned unchanged: its uppercase letters (Mtavruli) are
+ * only used for all-caps text, never to start a word.
  */
 export function upperFirstChar(char: string): string {
   return GEORGIAN.test(char) ? char : char.toUpperCase()

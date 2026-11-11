@@ -16,9 +16,9 @@
  * slugify('Hello World!')       // "hello-world"
  * slugify('My Blog Post #1')    // "my-blog-post-1"
  * slugify('  extra   spaces  ') // "extra-spaces"
- * slugify('Crème Brûlée')       // "creme-brulee"
+ * slugify('Café Résumé')        // "cafe-resume"
  * slugify('Duckkit™ Pro')       // "duckkit-pro"
- * slugify('Привет мир')         // "привет-мир"
+ * slugify('Tom & Jerry')        // "tom-jerry"
  */
 export function slugify(str: string): string {
   return (

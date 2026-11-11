@@ -27,7 +27,7 @@ capitalize('hello world')  // "Hello world"
 capitalize('hELLO')        // "HELLO" — only first letter changed
 capitalize('')             // ""
 capitalize('😀hello')      // "😀hello" — emoji kept whole
-capitalize('élan')         // "Élan"
+capitalize('éclair')       // "Éclair"
 ```
 
 > **Scripts whose capitals are only used for all-caps text are left unchanged:** in Georgian, for example, capital letters (Mtavruli) never start a word, so `capitalize` doesn't add one.
@@ -50,7 +50,7 @@ camelCase('FOO_BAR')      // "fooBar"
 camelCase('fooBar')       // "fooBar" — already camelCase, unchanged
 camelCase('FooBarBaz')    // "fooBarBaz"
 camelCase('myAPIKey')     // "myApiKey" — acronyms become one word
-camelCase('приветМир')    // "приветМир" — humps in any cased script
+camelCase('caféMenu')     // "caféMenu" — humps after accented letters too
 ```
 
 ---
@@ -118,7 +118,7 @@ titleCase('hello world')   // "Hello World"
 titleCase('hello  world')  // "Hello  World" — preserves spacing
 titleCase('hELLO wORLD')   // "HELLO WORLD" — does not lowercase existing uppercase
 titleCase("don't stop")    // "Don't Stop" — apostrophes stay inside the word
-titleCase('élan vital')    // "Élan Vital" — works for any script with capitals
+titleCase('éclair recipe') // "Éclair Recipe" — accented letters too
 titleCase('foo_bar baz')   // "Foo_bar Baz" — underscores stay inside the word
 titleCase('3rd place')     // "3rd Place"
 titleCase("the 'quick' fox") // "The 'Quick' Fox" — words in single quotes too
@@ -172,20 +172,17 @@ slugify('!hello!')            // "hello" — leading/trailing hyphens removed
 slugify('')                   // ""
 ```
 
-**Works for every language.** Letters and digits from any script are kept; accents on Latin letters are removed. Punctuation, symbols, fractions and emoji are dropped; full-width letters and digits become plain ones.
+**Accents are removed, not dropped.** Accented letters lose their accent instead of disappearing, and letters from other alphabets are kept. Punctuation, symbols, fractions and emoji are dropped; full-width letters and digits become plain ones.
 
 ```typescript
-slugify('Crème Brûlée')       // "creme-brulee"
-slugify('日本語 タイトル')          // "日本語-タイトル"
-slugify('Привет мир')         // "привет-мир"
-slugify('한국어 블로그')        // "한국어-블로그"
+slugify('Café Résumé')        // "cafe-resume" — a plain [^a-z0-9] regex gives "caf-rsum"
+slugify('Tom & Jerry: The Movie') // "tom-jerry-the-movie"
 slugify('I ❤️ TS & JS')       // "i-ts-js"
 slugify('Duckkit™ Pro')       // "duckkit-pro"
 slugify('1½ cups')            // "1-cups"
-slugify('ＡＢＣ１２３')          // "abc123"
 ```
 
-> **Non-Latin slugs are not ASCII:** they are valid in URLs — browsers show them as typed and send them percent-encoded — but if you need ASCII-only slugs, transliterate first (e.g. with the `transliteration` package) and then call `slugify`.
+> **Slugs from other alphabets are not ASCII:** they are valid in URLs — browsers show them as typed and send them percent-encoded — but if you need ASCII-only slugs, transliterate first (e.g. with the `transliteration` package) and then call `slugify`.
 
 ---
 

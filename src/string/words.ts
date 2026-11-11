@@ -16,7 +16,7 @@
  */
 export function words(str: string): string[] {
   return str
-    // \p{Lu}/\p{Ll} instead of A-Z/a-z, so humps in any cased script split (приветМир, grüßGott)
+    // \p{Lu}/\p{Ll} instead of A-Z/a-z, so humps after accented letters split too (caféMenu)
     .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
     .replace(/([\p{Ll}\d])(\p{Lu})/gu, '$1 $2')
     .replace(/[-_]+/g, ' ')

@@ -30,15 +30,14 @@ import { encodeBase64 } from 'duckkit/encode'  // pointed to a file that did not
 
 ## slugify
 
-Letters from every script are kept and accents on Latin letters are removed. 0.1.x removed every non-ASCII letter.
+Accented letters lose their accent instead of being dropped, and letters from other alphabets are kept. 0.1.x removed every non-ASCII letter.
 
 ```typescript
-slugify('Crème Brûlée')  // 0.2: "creme-brulee"   0.1: "crme-brle"
-slugify('Привет мир')    // 0.2: "привет-мир"     0.1: ""
+slugify('Café Résumé')   // 0.2: "cafe-resume"    0.1: "caf-rsum"
 slugify('a - b')         // 0.2: "a-b"            0.1: "a---b"
 ```
 
-**What to do:** if you store slugs (in a database or as URLs) and regenerate them from titles, slugs for text with accents, non-Latin letters or ` - ` will change. Keep the stored slugs, or redirect old URLs. Plain ASCII titles give the same slug, except that runs of hyphens are now collapsed.
+**What to do:** if you store slugs (in a database or as URLs) and regenerate them from titles, slugs for text with accents, letters from other alphabets or ` - ` will change. Keep the stored slugs, or redirect old URLs. Plain ASCII titles give the same slug, except that runs of hyphens are now collapsed.
 
 ---
 
@@ -84,7 +83,7 @@ All of these were wrong in 0.1.x. If you compare exact outputs in tests or store
 | `addYears` | `addYears(Feb 29 2024, 1)` | Feb 28 2025 | Mar 1 2025 |
 | `camelCase` | `camelCase('fooBar')` | `"fooBar"` | `"foobar"` |
 | `pascalCase` | `pascalCase('fooBarBaz')` | `"FooBarBaz"` | `"Foobarbaz"` |
-| `kebabCase` | `kebabCase('grüßGott')` | `"grüß-gott"` | `"grüßgott"` |
+| `kebabCase` | `kebabCase('caféMenu')` | `"café-menu"` | `"cafémenu"` |
 | `titleCase` | `titleCase("don't")` | `"Don't"` | `"Don'T"` |
 | `truncate` | `truncate('Hello World', 2)` | `".."` | `"Hello Worl..."` |
 | `truncate` | `truncate('Hi😀there', 3, '')` | `"Hi"` | `"Hi\ud83d"` (broken emoji) |

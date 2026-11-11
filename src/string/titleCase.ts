@@ -8,7 +8,7 @@ const WORD_START = /(^|[^\p{L}\p{M}\p{N}_'’]|(?:^|[^\p{L}\p{M}\p{N}_])['’]+)
 /**
  * Converts a string to Title Case, capitalizing the first letter of every word.
  *
- * Works for any script with upper and lower case (`élan` → `Élan`).
+ * Works for any script with upper and lower case (`éclair` → `Éclair`).
  * Apostrophes and underscores stay inside a word (`don't` → `Don't`); words in
  * single quotes are capitalized (`'quick'` → `'Quick'`). Existing capitals are kept,
  * not lowercased. Georgian is left unchanged: its capital forms (Mtavruli) are only

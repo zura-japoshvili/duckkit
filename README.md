@@ -19,7 +19,7 @@ import { groupBy, roundTo, addMonths, slugify, safe } from 'duckkit'
 groupBy(users, u => u.country)        // Partial<Record<'GE' | 'US', User[]>>
 roundTo(1.005, 2)                     // 1.01 — Math.round(1.005 * 100) / 100 gives 1
 addMonths(new Date(2026, 0, 31), 1)   // Feb 28 — Date#setMonth gives Mar 3
-slugify('Crème Brûlée & Привет')       // "creme-brulee-привет"
+slugify('Café Résumé & Co')            // "cafe-resume-co"
 safe(() => JSON.parse(raw))           // { ok: true, value } or { ok: false, error } — never throws
 ```
 
@@ -44,7 +44,7 @@ Works in every current browser and in Node.js 20+. Type declarations are include
 
 **Edge cases fixed, not footnoted.** `roundTo` rounds the decimal you wrote, so `1.005` becomes `1.01`. `addMonths` clamps to the end of the month and keeps the time of day across daylight-saving changes. `throttle` doesn't drop the last call. `truncate` never cuts an emoji in half.
 
-**Works in every language.** `slugify`, `titleCase`, `camelCase` and the other string functions handle letters from any script — accented Latin, Cyrillic, Greek, CJK, Hindi — not only A–Z.
+**Not only A–Z.** `slugify`, `titleCase`, `camelCase` and the other string functions handle accented letters and every alphabet correctly — `slugify` turns `Café Résumé` into `cafe-resume`, where the usual regex gives `caf-rsum`.
 
 **Small.** No dependencies, and the package is marked side-effect free, so bundlers keep only what you import: one function adds about 0.1–0.3 KB (minified and gzipped), the whole library about 7.5 KB.
 
@@ -93,9 +93,8 @@ addYears(new Date(2024, 1, 29), 1)       // 2025-02-28
 ### Strings in any language
 
 ```typescript
-slugify('Crème Brûlée')                  // "creme-brulee"
-slugify('Привет мир')                     // "привет-мир"
-slugify('日本語 タイトル')                 // "日本語-タイトル"
+slugify('Café Résumé')                    // "cafe-resume"
+slugify('Tom & Jerry: The Movie')         // "tom-jerry-the-movie"
 titleCase("don't stop")                  // "Don't Stop"
 camelCase('myAPIKey')                    // "myApiKey"
 truncate('Hi😀there', 6)                 // "Hi..." — the emoji is not split
@@ -201,7 +200,7 @@ const { groupBy } = require('duckkit')
 
 0.2.0 fixes the published package — several documented imports did not work in 0.1.x — and fixes bugs that were documented instead of fixed. Most code needs no change. Check these:
 
-- **Stored slugs:** `slugify` now keeps non-Latin letters and removes accents (`'Crème'` → `'creme'`, was `'crme'`). Slugs you saved earlier from such text will differ if you regenerate them.
+- **Stored slugs:** `slugify` now removes accents instead of dropping accented letters (`'Café'` → `'cafe'`, was `'caf'`) and keeps letters from other alphabets. Slugs you saved earlier from such text will differ if you regenerate them.
 - **`throttle`** now runs the last call made during the wait. Pass `{ trailing: false }` for the old behavior.
 - **`curry`** works for any number of arguments; drop explicit type arguments like `curry<number, number, number>(…)`.
 - **Rounding and month math** give different (correct) results at the edges: `roundTo(1.005, 2)` is `1.01`, `addMonths(Jan 31, 1)` is Feb 28.
