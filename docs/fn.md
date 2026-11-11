@@ -1,5 +1,7 @@
 # Fn
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
 ```typescript
 import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from 'duckkit/fn'
 ```
@@ -19,6 +21,8 @@ Function composition utilities. Complements `pipe` (which threads a single value
 All overloaded up to 5 steps. TypeScript infers every intermediate type — no `any` in the chain.
 
 > **Beyond 5 steps the types go loose:** The overloads cover up to 5 functions. A 6th step and beyond still runs correctly at runtime, but the composed function falls back to a loose signature — TypeScript stops checking the intermediate types and the result is no longer precisely typed. For longer chains, split into two composed functions, or nest one composition inside another to keep full typing.
+
+**On this page:** [pipeline](#pipeline) · [compose](#compose) · [pipelineAsync](#pipelineasync) · [composeAsync](#composeasync) · [curry](#curry) · [tap](#tap) · [when](#when)
 
 ---
 

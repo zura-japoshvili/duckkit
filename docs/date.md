@@ -1,5 +1,7 @@
 # Date
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
 ```typescript
 import { formatDate, timeAgo, addDays, startOfDay, isSameDay, ... } from 'duckkit/date'
 ```
@@ -23,6 +25,8 @@ All functions are non-mutating — they always return a new `Date` object.
 > new Date(2026, 0, 1)              // local midnight ✅
 > new Date('2026-01-01')            // UTC midnight ⚠️ — shifts by timezone
 > ```
+
+**On this page:** [timeAgo](#timeago) · [formatDate](#formatdate) · [formatDuration](#formatduration) · [daysBetween](#daysbetween) · [addDays](#adddays) · [subDays](#subdays) · [addMonths](#addmonths) · [addYears](#addyears) · [isBefore / isAfter](#isbefore--isafter) · [isSameDay](#issameday) · [startOfDay / endOfDay](#startofday--endofday) · [startOfWeek](#startofweek) · [startOfMonth](#startofmonth) · [Boolean date checks](#boolean-date-checks)
 
 ---
 
@@ -128,6 +132,10 @@ Units cap at hours — there is no day/week unit, so large durations accumulate 
 > **Seconds, not milliseconds:** The input is in seconds. Passing `Date.now()`-style millisecond values will be off by a factor of 1000. Divide by 1000 first: `formatDuration(ms / 1000)`.
 
 > **No fractional or rounding handling:** Each unit is floored, so fractional seconds are dropped (`formatDuration(1.9)` → `"1s"`). Pass whole seconds for predictable output.
+
+---
+
+## daysBetween
 
 Returns the number of full days between two dates. Order doesn't matter — always returns a positive number.
 

@@ -1,10 +1,14 @@
 # Encode
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
 ```typescript
 import { encodeBase64, decodeBase64, encodeHex, decodeHex, encodeUri, decodeUri, encodeJson, decodeJson } from 'duckkit/encode'
 ```
 
 Encoding and decoding utilities. All decode functions return `null` on invalid input instead of throwing.
+
+**On this page:** [encodeBase64 / decodeBase64](#encodebase64--decodebase64) · [encodeBase64Url / decodeBase64Url](#encodebase64url--decodebase64url) · [encodeHex / decodeHex](#encodehex--decodehex) · [encodeUri / decodeUri](#encodeuri--decodeuri) · [encodeJson / decodeJson](#encodejson--decodejson)
 
 ---
 

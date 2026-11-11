@@ -1,33 +1,29 @@
 # duckkit 🦆
 
+**Small, fully typed TypeScript utilities that get the edge cases right.**
+
+Zero dependencies · tree-shakeable · ESM + CommonJS · every current browser and Node.js 20+
+
 [![npm version](https://img.shields.io/npm/v/duckkit.svg)](https://www.npmjs.com/package/duckkit)
 [![npm downloads](https://img.shields.io/npm/dm/duckkit.svg)](https://www.npmjs.com/package/duckkit)
+[![CI](https://github.com/zura-japoshvili/duckkit/actions/workflows/ci.yml/badge.svg)](https://github.com/zura-japoshvili/duckkit/actions/workflows/ci.yml)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/duckkit)](https://bundlephobia.com/package/duckkit)
+[![types included](https://img.shields.io/badge/types-included-blue)](https://www.typescriptlang.org/)
 [![license](https://img.shields.io/npm/l/duckkit.svg)](https://github.com/zura-japoshvili/duckkit/blob/main/LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-first-blue)](https://www.typescriptlang.org/)
 
-TypeScript-first utility library. Zero dependencies, tree-shakeable, fully typed.
+150+ functions for arrays, objects, strings, numbers, dates, async code, events, encoding and validation. Each one is typed without `any`, documented together with its edge cases, and covered by tests (1,100+ in total).
 
-Covers array, object, string, number, date, async, delay, emitter, encode, validate, and function composition utilities. Each function is properly typed — no `any`, no `Record<string, unknown>` workarounds. Import everything or per category, only what you use ends up in the bundle.
+```typescript
+import { groupBy, roundTo, addMonths, slugify, safe } from 'duckkit'
 
----
+groupBy(users, u => u.country)        // Partial<Record<'GE' | 'US', User[]>>
+roundTo(1.005, 2)                     // 1.01 — Math.round(1.005 * 100) / 100 gives 1
+addMonths(new Date(2026, 0, 31), 1)   // Feb 28 — Date#setMonth gives Mar 3
+slugify('Crème Brûlée & Привет')       // "creme-brulee-привет"
+safe(() => JSON.parse(raw))           // { ok: true, value } or { ok: false, error } — never throws
+```
 
-## Overview
-
-A comprehensive TypeScript utility library that provides:
-
-- **Zero Dependencies** — lightweight and self-contained, nothing pulled in
-- **Tree-Shakeable** — import per category, only what you use ends up in the bundle
-- **Fully Typed** — no `any`, no `Record<string, unknown>` workarounds, proper generics throughout
-- **ESM + CJS** — works in Node.js, browsers, and bundlers
-- **Typed `groupBy`** — returns `Partial<Record<K, T[]>>`, not `Dictionary<any>`
-- **`deepClone` that preserves Dates** — unlike the `JSON.parse(JSON.stringify(...))` trick
-- **`safe` / Result type** — try/catch as a typed value, no untyped throws
-- **`delaySkippable`** — an async wait that ends early when a condition becomes true
-- **Typed event emitter** — payload types enforced at compile time
-- **Function composition** — `pipeline`, `compose`, `curry`, `tap`, `when` with full type inference
-- **Encoding utilities** — Base64, Base64URL, Hex, URI, JSON — all with safe error handling
-- **Validation utilities** — format validators, type guards, value checks — all return `boolean`
+**Contents:** [Install](#install) · [Why duckkit](#why-duckkit) · [Examples](#examples) · [All functions](#available-utilities) · [Importing](#importing) · [Conventions](#conventions) · [Upgrading from 0.1](#upgrading-from-01x) · [Documentation](#documentation)
 
 ---
 
@@ -35,124 +31,30 @@ A comprehensive TypeScript utility library that provides:
 
 ```bash
 npm install duckkit
+# or: pnpm add duckkit · yarn add duckkit · bun add duckkit
 ```
 
-Works in every current browser and in Node.js 20+.
+Works in every current browser and in Node.js 20+. Type declarations are included — there is no separate `@types` package.
 
 ---
 
-## Available Utilities
+## Why duckkit
 
-| Category | Functions |
-|----------|-----------|
-| **Array** | `groupBy()` `flatGroupBy()` `sortBy()` `topBy()` `minBy()` `maxBy()` `partition()` `chunk()` `unique()` `zip()` `flatten()` `range()` `compact()` `sample()` `shuffle()` `without()` `union()` `intersection()` `difference()` `countBy()` `keyBy()` `sum()` `sumBy()` |
-| **Object** | `pick()` `omit()` `deepClone()` `deepMerge()` `isEqual()` `mapKeys()` `mapValues()` `invertObject()` `flattenObject()` `unflattenObject()` `filterKeys()` `filterValues()` `keys()` `values()` `entries()` `fromEntries()` `deepFreeze()` `objectDiff()` `mergeIf()` `hasOwn()` |
-| **Async** | `safe()` `safeAsync()` `pipe()` `memo()` `memoAsync()` `debounce()` `throttle()` `retry()` `timeout()` `once()` `defer()` `parallel()` `sequential()` |
-| **Date** | `timeAgo()` `formatDate()` `formatDuration()` `daysBetween()` `addDays()` `subDays()` `addMonths()` `addYears()` `isBefore()` `isAfter()` `isSameDay()` `startOfDay()` `endOfDay()` `startOfWeek()` `startOfMonth()` `isToday()` `isYesterday()` `isWeekend()` `isThisWeek()` `isThisYear()` |
-| **Number** | `clamp()` `lerp()` `roundTo()` `truncateTo()` `randomInt()` `inRange()` `average()` `normalize()` `toOrdinal()` `toRoman()` `formatNumber()` `formatBytes()` |
-| **String** | `capitalize()` `truncate()` `excerpt()` `slugify()` `camelCase()` `snakeCase()` `kebabCase()` `pascalCase()` `titleCase()` `isEmpty()` `randomId()` `countOccurrences()` `escapeHtml()` `unescapeHtml()` `template()` `words()` `mask()` `stripHtml()` |
-| **Delay** | `delay()` `delaySkippable()` `delayWithAbort()` `repeat()` |
-| **Emitter** | `createEmitter()` — with `on()` `off()` `once()` `emit()` `clear()` |
-| **Encode** | `encodeBase64()` `decodeBase64()` `encodeBase64Url()` `decodeBase64Url()` `encodeHex()` `decodeHex()` `encodeUri()` `decodeUri()` `encodeJson()` `decodeJson()` |
-| **Validate** | `isEmail()` `isUrl()` `isUUID()` `isIP()` `isIPv4()` `isIPv6()` `isCreditCard()` `isPhone()` `isString()` `isNumber()` `isBoolean()` `isArray()` `isObject()` `isDate()` `isFunction()` `isNull()` `isUndefined()` `isNullOrUndefined()` `isPromise()` `isEmpty()` `isEmptyObject()` `isEnum()` |
-| **Fn** | `pipeline()` `compose()` `pipelineAsync()` `composeAsync()` `curry()` `tap()` `when()` |
-| **Result types** | `safe()` `safeAsync()` — returns `Ok<T>` \| `Err`, import `Result`, `Ok`, `Err` types |
+**Types that tell the truth.** `groupBy` returns `Partial<Record<K, T[]>>`, so a group that may be missing is typed as possibly `undefined`. `safe` turns exceptions into a typed `Result`. The event emitter checks event names and payload types. `curry` types every step, for any number of arguments.
+
+**Edge cases fixed, not footnoted.** `roundTo` rounds the decimal you wrote, so `1.005` becomes `1.01`. `addMonths` clamps to the end of the month and keeps the time of day across daylight-saving changes. `throttle` doesn't drop the last call. `truncate` never cuts an emoji in half.
+
+**Works in every language.** `slugify`, `titleCase`, `camelCase` and the other string functions handle letters from any script — accented Latin, Cyrillic, Greek, CJK, Hindi — not only A–Z.
+
+**Small.** No dependencies, and the package is marked side-effect free, so bundlers keep only what you import: one function adds about 0.1–0.3 KB (minified and gzipped), the whole library about 7.5 KB.
+
+**Checked as published.** CI installs the packed package the way users get it, loads every entry point with both `import` and `require`, and checks the type declarations with [publint](https://publint.dev) and [Are the Types Wrong](https://arethetypeswrong.github.io).
 
 ---
 
-## Key Features
+## Examples
 
-### Array Utilities
-- Typed `groupBy` — returns `Partial<Record<K, T[]>>`, not `any`
-- `partition`, `topBy`, `minBy`, `maxBy`, `chunk`, `compact`, `unique`
-- `shuffle`, `flatten`, `range`, `zip`, `without`, `union`, `intersection`, `difference`
-- `countBy`, `keyBy`, `sum`, `sumBy`, `sample`
-
-### Object Utilities
-- `deepClone` — preserves `Date` objects, unlike `JSON.parse(JSON.stringify(...))`
-- `deepMerge` — nested merge with Date support, non-mutating
-- `pick`, `omit` — removed keys disappear from the TypeScript type entirely
-- `deepFreeze` — recursively freezes and returns `DeepReadonly<T>`
-- `objectDiff` — returns keys that changed between two objects
-- `mergeIf` — shallow merge that skips `null` and `undefined` values
-- `hasOwn` — safe typed wrapper for `Object.hasOwn`
-- `flattenObject`, `unflattenObject`, `invertObject`
-- `mapKeys`, `mapValues`, `filterKeys`, `filterValues`
-- Typed `keys`, `values`, `entries`, `fromEntries`
-
-### Async & Error Handling
-- `safe` / `safeAsync` — try/catch as a typed `Result` value
-- `retry` with optional exponential backoff
-- `memo` / `memoAsync` with `maxSize` cache eviction
-- `debounce` with `cancel()` / `flush()`, `throttle` with a trailing call and `cancel()`
-- `once`, `defer`
-- `parallel` with concurrency limit, `sequential`
-- `timeout` — races a promise against a timer
-
-### Date Utilities
-- `timeAgo` — human-readable relative time ("3 minutes ago")
-- `formatDate` — token-based formatting (`MMM D, YYYY`, `HH:mm:ss`)
-- `formatDuration` — `3661` → `"1h 1m 1s"`
-- `addDays`, `addMonths`, `addYears`, `subDays`, `daysBetween` — month ends are clamped (Jan 31 + 1 month is Feb 28)
-- `startOfDay`, `endOfDay`, `startOfWeek`, `startOfMonth`
-- `isSameDay`, `isBefore`, `isAfter`
-- `isToday`, `isYesterday`, `isWeekend`, `isThisWeek`, `isThisYear`
-
-### Number Utilities
-- `clamp`, `lerp`, `normalize` — common math for animations and game dev
-- `roundTo`, `truncateTo` — round the decimal you wrote: `roundTo(1.005, 2)` is `1.01`, not `1`
-- `formatBytes` — `1048576` → `"1 MB"`, B through YB
-- `toOrdinal` — `21` → `"21st"`
-- `toRoman`, `formatNumber`, `randomInt`, `inRange`, `average`
-
-### String Utilities
-- Case conversion: `camelCase`, `snakeCase`, `kebabCase`, `pascalCase`, `titleCase`
-- `slugify` — slugs in any language (`"Crème Brûlée"` → `"creme-brulee"`, Georgian and Cyrillic kept)
-- `mask` — `"4242424242424242"` → `"************4242"`
-- `escapeHtml` / `unescapeHtml` — XSS-safe HTML encoding
-- `template` — `"Hello {name}!"` interpolation
-- `truncate`, `excerpt` — cut at character or word boundary
-- `randomId` — cryptographically secure via `crypto.getRandomValues`
-- `stripHtml`, `words`, `isEmpty`, `countOccurrences`
-
-### Delay Utilities
-- `delay` — simple `await delay(1000)`
-- `delaySkippable` — resolves early if a condition becomes true
-- `delayWithAbort` — native `AbortController` integration
-- `repeat` — call a function N times with a delay between each
-
-### Encode Utilities
-- `encodeBase64` / `decodeBase64` — standard Base64, Unicode-safe
-- `encodeBase64Url` / `decodeBase64Url` — URL-safe Base64, no `+`, `/`, `=`
-- `encodeHex` / `decodeHex` — hexadecimal encoding
-- `encodeUri` / `decodeUri` — URI component encoding with safe error handling
-- `encodeJson` / `decodeJson` — safe JSON stringify/parse, returns `null` on failure
-
-### Validate Utilities
-- Format validators: `isEmail`, `isUrl`, `isUUID`, `isIP`, `isIPv4`, `isIPv6`, `isCreditCard`, `isPhone`
-- Type guards: `isString`, `isNumber`, `isBoolean`, `isArray`, `isObject`, `isDate`, `isFunction`
-- Null checks: `isNull`, `isUndefined`, `isNullOrUndefined`
-- Async: `isPromise`
-- Value checks: `isEmpty`, `isEmptyObject`
-- Enum: `isEnum` — checks enum values, not keys
-
-### Typed Event Emitter
-- Define your event map once — TypeScript enforces payload types on every `emit` and `on`
-- `on`, `off`, `once`, `emit`, `clear`
-- Typos and wrong payload types are caught at compile time, not runtime
-
-### Function Composition
-- `pipeline` / `compose` — reusable typed composed functions
-- `pipelineAsync` / `composeAsync` — async steps, sync and async freely mixed
-- `curry` — partial application for any number of arguments, with full type inference
-- `tap` — side effects inside a pipeline without breaking the chain
-- `when` — conditionally apply a transform
-
----
-
-## Why duckkit?
-
-### Typed `groupBy` — not `any`
+### `groupBy` that knows which groups exist
 
 ```typescript
 // lodash — returns Dictionary<User[]>: any string key compiles,
@@ -167,95 +69,171 @@ grouped.GE?.[0]?.name  // string | undefined ✅ — the type forces you to
 grouped.GEE            // ❌ TypeScript error — not a known key
 ```
 
-### `deepClone` that preserves `Date` objects
+### Errors as values
 
 ```typescript
-// JSON trick — everyone uses it, everyone hits this bug
-const clone = JSON.parse(JSON.stringify(obj))
-clone.createdAt  // string ❌ — Date became a string
-
-// duckkit
-const clone = deepClone(obj)
-clone.createdAt  // Date ✅
-```
-
-### `safe` — try/catch as a value
-
-```typescript
-// before
-let data
-try {
-  data = JSON.parse(raw)
-} catch (e) { ... }
-
-// duckkit
 const result = safe(() => JSON.parse(raw))
-if (result.ok) console.log(result.value)  // typed ✅
+if (result.ok) use(result.value)       // typed value
+else console.error(result.error)       // always an Error, even if a string was thrown
+
+const response = await safeAsync(() => fetch('/api/user'))
 ```
 
-### `delaySkippable` — cancellable wait
+### Rounding and dates without surprises
 
 ```typescript
-// resolves after 3s, or immediately if userClickedSkip becomes true
-await delaySkippable(3000, () => userClickedSkip)
+roundTo(1.005, 2)                        // 1.01
+truncateTo(0.29, 2)                      // 0.29 — never rounds up, never drops a digit
+formatBytes(1023.999)                    // "1 KB"
+
+addMonths(new Date(2026, 0, 31), 1)      // 2026-02-28
+addYears(new Date(2024, 1, 29), 1)       // 2025-02-28
 ```
 
-### Typed event emitter
+### Strings in any language
 
 ```typescript
-const emitter = createEmitter<{
+slugify('Crème Brûlée')                  // "creme-brulee"
+slugify('Привет мир')                     // "привет-мир"
+slugify('日本語 タイトル')                 // "日本語-タイトル"
+titleCase("don't stop")                  // "Don't Stop"
+camelCase('myAPIKey')                    // "myApiKey"
+truncate('Hi😀there', 6)                 // "Hi..." — the emoji is not split
+```
+
+### Rate limiting you can cancel
+
+```typescript
+const save = debounce(() => saveDraft(), 1000)
+window.addEventListener('beforeunload', () => save.flush())   // don't lose the last edit
+
+const onScroll = throttle(() => updatePosition(), 100)
+// runs at most every 100 ms, and once more after scrolling stops
+onScroll.cancel()
+```
+
+### A typed event emitter
+
+```typescript
+const events = createEmitter<{
   win: number
   spin: void
 }>()
 
-emitter.emit('win', 500)     // ✅
-emitter.emit('win', 'oops')  // ❌ TypeScript error
-emitter.emit('wiiin', 500)   // ❌ typo caught at compile time
+events.on('win', amount => console.log(amount))   // amount: number
+events.emit('win', 500)     // ✅
+events.emit('win', 'oops')  // ❌ TypeScript error — payload must be a number
+events.emit('wiiin', 500)   // ❌ TypeScript error — unknown event
+```
+
+### A wait the user can skip
+
+```typescript
+// resolves after 3 s, or as soon as the user clicks "skip"
+await delaySkippable(3000, () => userClickedSkip)
 ```
 
 ---
 
-## Import
+## Available Utilities
+
+Every name links to its documentation.
+
+| Category | Functions |
+|----------|-----------|
+| **Array** | [`groupBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#groupby) [`flatGroupBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#flatgroupby) [`sortBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#sortby) [`topBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#topby) [`minBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#minby--maxby) [`maxBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#minby--maxby) [`partition()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#partition) [`chunk()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#chunk) [`unique()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#unique) [`zip()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#zip) [`flatten()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#flatten) [`range()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#range) [`compact()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#compact) [`sample()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#sample) [`shuffle()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#shuffle) [`without()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#without) [`union()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#union) [`intersection()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#intersection) [`difference()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#difference) [`countBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#countby) [`keyBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#keyby) [`sum()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#sum--sumby) [`sumBy()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md#sum--sumby) |
+| **Object** | [`pick()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#pick) [`omit()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#omit) [`deepClone()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#deepclone) [`deepMerge()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#deepmerge) [`isEqual()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#isequal) [`mapKeys()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#mapkeys) [`mapValues()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#mapvalues) [`invertObject()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#invertobject) [`flattenObject()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#flattenobject) [`unflattenObject()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#unflattenobject) [`filterKeys()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#filterkeys) [`filterValues()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#filtervalues) [`keys()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#keys--values--entries--fromentries) [`values()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#keys--values--entries--fromentries) [`entries()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#keys--values--entries--fromentries) [`fromEntries()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#keys--values--entries--fromentries) [`deepFreeze()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#deepfreeze) [`objectDiff()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#objectdiff) [`mergeIf()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#mergeif) [`hasOwn()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md#hasown) |
+| **Async** | [`safe()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#safe) [`safeAsync()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#safeasync) [`pipe()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#pipe) [`memo()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#memo) [`memoAsync()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#memoasync) [`debounce()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#debounce) [`throttle()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#throttle) [`retry()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#retry) [`timeout()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#timeout) [`once()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#once) [`defer()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#defer) [`parallel()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#parallel) [`sequential()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#sequential) |
+| **Date** | [`timeAgo()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#timeago) [`formatDate()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#formatdate) [`formatDuration()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#formatduration) [`daysBetween()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#daysbetween) [`addDays()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#adddays) [`subDays()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#subdays) [`addMonths()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#addmonths) [`addYears()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#addyears) [`isBefore()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#isbefore--isafter) [`isAfter()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#isbefore--isafter) [`isSameDay()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#issameday) [`startOfDay()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#startofday--endofday) [`endOfDay()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#startofday--endofday) [`startOfWeek()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#startofweek) [`startOfMonth()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#startofmonth) [`isToday()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#boolean-date-checks) [`isYesterday()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#boolean-date-checks) [`isWeekend()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#boolean-date-checks) [`isThisWeek()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#boolean-date-checks) [`isThisYear()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md#boolean-date-checks) |
+| **Number** | [`clamp()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#clamp) [`lerp()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#lerp) [`roundTo()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#roundto) [`truncateTo()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#truncateto) [`randomInt()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#randomint) [`inRange()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#inrange) [`average()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#average) [`normalize()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#normalize) [`toOrdinal()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#toordinal) [`toRoman()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#toroman) [`formatNumber()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#formatnumber) [`formatBytes()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md#formatbytes) |
+| **String** | [`capitalize()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#capitalize) [`truncate()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#truncate) [`excerpt()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#excerpt) [`slugify()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#slugify) [`camelCase()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#camelcase) [`snakeCase()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#snakecase) [`kebabCase()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#kebabcase) [`pascalCase()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#pascalcase) [`titleCase()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#titlecase) [`words()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#words) [`isEmpty()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#isempty) [`randomId()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#randomid) [`countOccurrences()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#countoccurrences) [`escapeHtml()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#escapehtml) [`unescapeHtml()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#unescapehtml) [`template()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#template) [`mask()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#mask) [`stripHtml()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md#striphtml) |
+| **Delay** | [`delay()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md#delay) [`delaySkippable()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md#delayskippable) [`delayWithAbort()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md#delaywithabort) [`repeat()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md#repeat) |
+| **Emitter** | [`createEmitter()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md#createemitter) — with [`on()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md#on) [`off()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md#off) [`once()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md#once) [`emit()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md#emit) [`clear()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md#clear) |
+| **Encode** | [`encodeBase64()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodebase64--decodebase64) [`decodeBase64()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodebase64--decodebase64) [`encodeBase64Url()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodebase64url--decodebase64url) [`decodeBase64Url()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodebase64url--decodebase64url) [`encodeHex()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodehex--decodehex) [`decodeHex()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodehex--decodehex) [`encodeUri()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodeuri--decodeuri) [`decodeUri()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodeuri--decodeuri) [`encodeJson()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodejson--decodejson) [`decodeJson()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md#encodejson--decodejson) |
+| **Validate** | [`isEmail()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isemail) [`isUrl()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isurl) [`isUUID()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isuuid) [`isIP()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isip--isipv4--isipv6) [`isIPv4()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isip--isipv4--isipv6) [`isIPv6()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isip--isipv4--isipv6) [`isCreditCard()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#iscreditcard) [`isPhone()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isphone) [`isString()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isstring) [`isNumber()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isnumber) [`isBoolean()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isboolean) [`isArray()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isarray) [`isObject()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isobject) [`isDate()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isdate) [`isFunction()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isfunction) [`isNull()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isnull--isundefined--isnullorundefined) [`isUndefined()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isnull--isundefined--isnullorundefined) [`isNullOrUndefined()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isnull--isundefined--isnullorundefined) [`isPromise()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#ispromise) [`isEmpty()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isempty) [`isEmptyObject()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isemptyobject) [`isEnum()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isenum) [`isNaN()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isnan) [`isFinite()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md#isfinite) |
+| **Fn** | [`pipeline()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#pipeline) [`compose()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#compose) [`pipelineAsync()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#pipelineasync) [`composeAsync()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#composeasync) [`curry()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#curry) [`tap()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#tap) [`when()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md#when) |
+| **Result types** | `Result<T>`, `Ok<T>`, `Err` — returned by [`safe()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#safe) and [`safeAsync()`](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md#safeasync) |
+
+---
+
+## Importing
 
 ```typescript
-// everything
-import { groupBy, safe, pipe, clamp, slugify, delay } from 'duckkit'
+// everything from the root — bundlers keep only what you use
+import { groupBy, safe, slugify, roundTo } from 'duckkit'
 
-// or per category — fully tree-shakeable
+// or per category
 import { groupBy, partition, sortBy, chunk } from 'duckkit/array'
-import { safe, safeAsync, pipe, retry, timeout, once, defer } from 'duckkit/async'
-import { formatDate, timeAgo, formatDuration, addDays, startOfDay, isSameDay } from 'duckkit/date'
-import { pick, omit, deepMerge, deepClone, flattenObject } from 'duckkit/object'
-import { clamp, lerp, roundTo, average, toOrdinal, formatBytes } from 'duckkit/number'
-import { slugify, camelCase, escapeHtml, template, mask, excerpt } from 'duckkit/string'
+import { safe, safeAsync, debounce, throttle, retry, timeout } from 'duckkit/async'
+import { formatDate, timeAgo, addMonths, startOfDay } from 'duckkit/date'
+import { pick, omit, deepMerge, deepClone } from 'duckkit/object'
+import { roundTo, truncateTo, formatBytes, clamp } from 'duckkit/number'
+import { slugify, camelCase, truncate, template } from 'duckkit/string'
 import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
 import { createEmitter } from 'duckkit/emitter'
-import { pipeline, compose, pipelineAsync, composeAsync, curry, tap, when } from 'duckkit/fn'
-import { encodeBase64, decodeBase64, encodeHex, decodeHex, encodeUri, decodeUri, encodeJson, decodeJson } from 'duckkit/encode'
-import { isEmail, isUrl, isUUID, isString, isNumber, isEnum, isEmpty } from 'duckkit/validate'
+import { pipeline, compose, curry, tap, when } from 'duckkit/fn'
+import { encodeBase64, decodeBase64, encodeJson, decodeJson } from 'duckkit/encode'
+import { isEmail, isUrl, isUUID, isString, isEnum } from 'duckkit/validate'
+
+// types
+import type { Result, Debounced, Throttled, Curried, DeepReadonly, Emitter } from 'duckkit'
+
+// CommonJS works too
+const { groupBy } = require('duckkit')
 ```
+
+`isEmpty` exists in two versions: `duckkit` and `duckkit/validate` export the one that also handles arrays and objects, `duckkit/string` exports a string-only one.
+
+---
+
+## Conventions
+
+- **Nothing mutates its input.** Functions return new arrays, objects and dates.
+- **Decoders return `null` on bad input** (`decodeJson`, `decodeBase64`, …) instead of throwing.
+- **Validators and type guards return booleans** (`isEmail`, `isString`, …); type guards also narrow the type.
+- **Invalid options throw** an `Error` whose message starts with the function name, e.g. `roundTo: decimals must be an integer`.
+- **Dates use local time**, like `Date` itself.
+- **Strings are Unicode-aware**: letters from any script count as letters, and emoji are never split.
+
+---
+
+## Upgrading from 0.1.x
+
+0.2.0 fixes the published package — several documented imports did not work in 0.1.x — and fixes bugs that were documented instead of fixed. Most code needs no change. Check these:
+
+- **Stored slugs:** `slugify` now keeps non-Latin letters and removes accents (`'Crème'` → `'creme'`, was `'crme'`). Slugs you saved earlier from such text will differ if you regenerate them.
+- **`throttle`** now runs the last call made during the wait. Pass `{ trailing: false }` for the old behavior.
+- **`curry`** works for any number of arguments; drop explicit type arguments like `curry<number, number, number>(…)`.
+- **Rounding and month math** give different (correct) results at the edges: `roundTo(1.005, 2)` is `1.01`, `addMonths(Jan 31, 1)` is Feb 28.
+- **Node.js 20+** is required (browsers are not affected).
+
+The [upgrade guide](https://github.com/zura-japoshvili/duckkit/blob/main/docs/upgrading-to-0.2.md) lists every change with what to do, and the [changelog](https://github.com/zura-japoshvili/duckkit/blob/main/CHANGELOG.md) has the details.
 
 ---
 
 ## Documentation
 
-Full API documentation with examples and edge case notes:
+Each page lists the module's functions with signatures, examples and edge-case notes. Start at the [documentation index](https://github.com/zura-japoshvili/duckkit/blob/main/docs/README.md).
 
-| Module | Docs |
-|--------|------|
-| Array | [docs/array.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md) |
-| Object | [docs/object.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md) |
-| Async | [docs/async.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md) |
-| Date | [docs/date.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md) |
-| Number | [docs/number.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md) |
-| String | [docs/string.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md) |
-| Delay | [docs/delay.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md) |
-| Emitter | [docs/emitter.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md) |
-| Fn | [docs/fn.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md) |
-| Encode | [docs/encode.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md) |
-| Validate | [docs/validate.md](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md) |
+| Module | What's in it |
+|--------|--------------|
+| [Array](https://github.com/zura-japoshvili/duckkit/blob/main/docs/array.md) | grouping, sorting, set operations, chunking, sampling |
+| [Object](https://github.com/zura-japoshvili/duckkit/blob/main/docs/object.md) | pick/omit, deep clone/merge/equal/freeze, flatten, mapping |
+| [Async](https://github.com/zura-japoshvili/duckkit/blob/main/docs/async.md) | `Result` error handling, memoize, debounce/throttle, retry, timeout, concurrency |
+| [Date](https://github.com/zura-japoshvili/duckkit/blob/main/docs/date.md) | formatting, relative time, date math, start/end of periods, checks |
+| [Number](https://github.com/zura-japoshvili/duckkit/blob/main/docs/number.md) | rounding, clamping, interpolation, formatting numbers and bytes |
+| [String](https://github.com/zura-japoshvili/duckkit/blob/main/docs/string.md) | case conversion, slugs, truncation, HTML escaping, templates |
+| [Delay](https://github.com/zura-japoshvili/duckkit/blob/main/docs/delay.md) | promise delays: plain, skippable, abortable, repeating |
+| [Emitter](https://github.com/zura-japoshvili/duckkit/blob/main/docs/emitter.md) | a typed event emitter |
+| [Fn](https://github.com/zura-japoshvili/duckkit/blob/main/docs/fn.md) | `pipeline`, `compose`, `curry`, `tap`, `when` |
+| [Encode](https://github.com/zura-japoshvili/duckkit/blob/main/docs/encode.md) | Base64, Base64URL, hex, URI and JSON encoding that never throws |
+| [Validate](https://github.com/zura-japoshvili/duckkit/blob/main/docs/validate.md) | format validators, type guards, value checks |
 
 ---
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome — see [CONTRIBUTING](https://github.com/zura-japoshvili/duckkit/blob/main/.github/CONTRIBUTING.md). Changes are listed in the [changelog](https://github.com/zura-japoshvili/duckkit/blob/main/CHANGELOG.md).
 
 ## License
 

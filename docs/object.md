@@ -1,11 +1,15 @@
 # Object
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
 ```typescript
 import { pick, omit, deepMerge, deepClone, isEqual, mapKeys, mapValues, invertObject, flattenObject, unflattenObject, filterKeys, filterValues, keys, values, entries, fromEntries, deepFreeze, objectDiff, mergeIf, hasOwn } from 'duckkit/object'
 import type { DeepReadonly } from 'duckkit/object'
 ```
 
 All functions are non-mutating — they always return a new object.
+
+**On this page:** [pick](#pick) · [omit](#omit) · [deepMerge](#deepmerge) · [deepClone](#deepclone) · [isEqual](#isequal) · [mapKeys](#mapkeys) · [mapValues](#mapvalues) · [invertObject](#invertobject) · [flattenObject](#flattenobject) · [unflattenObject](#unflattenobject) · [filterKeys](#filterkeys) · [filterValues](#filtervalues) · [keys / values / entries / fromEntries](#keys--values--entries--fromentries) · [deepFreeze](#deepfreeze) · [objectDiff](#objectdiff) · [mergeIf](#mergeif) · [hasOwn](#hasown)
 
 ---
 

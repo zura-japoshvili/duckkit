@@ -18,7 +18,7 @@
  * slugify('  extra   spaces  ') // "extra-spaces"
  * slugify('Crème Brûlée')       // "creme-brulee"
  * slugify('Duckkit™ Pro')       // "duckkit-pro"
- * slugify('გამარჯობა მსოფლიო')  // "გამარჯობა-მსოფლიო"
+ * slugify('Привет мир')         // "привет-мир"
  */
 export function slugify(str: string): string {
   return (

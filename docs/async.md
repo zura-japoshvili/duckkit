@@ -1,8 +1,14 @@
 # Async
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
+Error handling as values (`safe`, `safeAsync`), caching (`memo`), rate limiting (`debounce`, `throttle`), and running promises with retries, timeouts and concurrency limits.
+
 ```typescript
 import { safe, safeAsync, pipe, memo, debounce, throttle, retry, timeout, once, memoAsync, defer, parallel, sequential } from 'duckkit/async'
 ```
+
+**On this page:** [safe](#safe) · [safeAsync](#safeasync) · [Result types](#result-types) · [pipe](#pipe) · [memo](#memo) · [memoAsync](#memoasync) · [debounce](#debounce) · [throttle](#throttle) · [retry](#retry) · [timeout](#timeout) · [once](#once) · [defer](#defer) · [parallel](#parallel) · [sequential](#sequential)
 
 ---
 

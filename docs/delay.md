@@ -1,8 +1,14 @@
 # Delay
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
+Promise-based waiting: a plain delay, one that ends early when a condition becomes true, one an `AbortSignal` can cancel, and a helper that repeats a function with a pause in between.
+
 ```typescript
 import { delay, delaySkippable, delayWithAbort, repeat } from 'duckkit/delay'
 ```
+
+**On this page:** [delay](#delay) · [delaySkippable](#delayskippable) · [delayWithAbort](#delaywithabort) · [repeat](#repeat)
 
 ---
 

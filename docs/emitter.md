@@ -1,11 +1,15 @@
 # Emitter
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
 ```typescript
 import { createEmitter } from 'duckkit/emitter'
 import type { Emitter } from 'duckkit/emitter'
 ```
 
 A fully typed event emitter. Define your event map once — TypeScript enforces correct payload types on every `emit` and `on` call throughout your codebase.
+
+**On this page:** [createEmitter](#createemitter) · [on](#on) · [off](#off) · [once](#once) · [emit](#emit) · [clear](#clear) · [Typing the emitter](#typing-the-emitter)
 
 ---
 

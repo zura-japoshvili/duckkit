@@ -1,5 +1,9 @@
 # Validate
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
+Format validators, type guards and value checks. Every function returns a boolean; the type guards also narrow the type.
+
 ```typescript
 import { isEmail, isUrl, isUUID, isIP, isCreditCard, isPhone } from 'duckkit/validate'
 import { isString, isNumber, isBoolean, isArray, isObject, isDate, isFunction } from 'duckkit/validate'
@@ -8,6 +12,8 @@ import { isEmpty, isEmptyObject, isEnum } from 'duckkit/validate'
 ```
 
 All functions return `boolean`. No throwing, no side effects.
+
+**On this page:** [Format Validators](#format-validators) · [isEmail](#isemail) · [isUrl](#isurl) · [isUUID](#isuuid) · [isIP / isIPv4 / isIPv6](#isip--isipv4--isipv6) · [isCreditCard](#iscreditcard) · [isPhone](#isphone) · [Type Guards](#type-guards) · [isString](#isstring) · [isNumber](#isnumber) · [isBoolean](#isboolean) · [isArray](#isarray) · [isObject](#isobject) · [isDate](#isdate) · [isFunction](#isfunction) · [isNull / isUndefined / isNullOrUndefined](#isnull--isundefined--isnullorundefined) · [isPromise](#ispromise) · [Value Checks](#value-checks) · [isEmpty](#isempty) · [isEmptyObject](#isemptyobject) · [isEnum](#isenum) · [isNaN](#isnan) · [isFinite](#isfinite)
 
 ---
 

@@ -21,11 +21,11 @@ documented bugs into fixes. Some outputs change — see **Changed**.
 - `date/addMonths`, `date/addYears` — clamp to the last day of the month: Jan 31 + 1 month is Feb 28 (was Mar 3), Feb 29 + 1 year is Feb 28 (was Mar 1). The time of day is kept across daylight-saving changes, and years 0–99 are not mapped to 1900–1999
 - `async/throttle` — calls made while waiting are no longer dropped: the last one runs when the wait ends. Pass `{ trailing: false }` for the old behavior. Returns `Throttled<Args>` with `cancel()`. Windows longer than `setTimeout` allows (~24.8 days) and `ms = Infinity` work
 - `fn/curry` — works for any number of arguments (was 2 or 3; 4+ was returned uncurried). Rejected at compile time: functions with fewer than 2 parameters and functions with optional parameters (`c?: T`, `c = x`) — `fn.length` counts the first but not the second, so the step count can't be typed. At runtime, a function with `fn.length` below 2 (including wrapped ones like `memo(fn)`) throws instead of being returned uncurried. **Type break:** explicit type arguments like `curry<number, number, number>(…)` no longer compile — let TypeScript infer them
-- `string/slugify` — keeps letters from every script (Georgian, Cyrillic, CJK, …) and removes accents from Latin letters: `'Crème Brûlée'` → `'creme-brulee'` (was `'crme-brle'`), `'Привет'` → `'привет'` (was `''`). Runs of spaces, `_` and `-` become one hyphen (`'a - b'` was `'a---b'`). Full-width letters and digits become plain (`'ＡＢＣ１２３'` → `'abc123'`); symbols and fractions are still dropped (`'Duckkit™ Pro'` → `'duckkit-pro'`)
+- `string/slugify` — keeps letters from every script (Cyrillic, Greek, CJK, …) and removes accents from Latin letters: `'Crème Brûlée'` → `'creme-brulee'` (was `'crme-brle'`), `'Привет'` → `'привет'` (was `''`). Runs of spaces, `_` and `-` become one hyphen (`'a - b'` was `'a---b'`). Full-width letters and digits become plain (`'ＡＢＣ１２３'` → `'abc123'`); symbols and fractions are still dropped (`'Duckkit™ Pro'` → `'duckkit-pro'`)
 - `string/camelCase`, `string/pascalCase` — keep existing word boundaries: `camelCase('fooBar')` is `'fooBar'` (was `'foobar'`), `pascalCase('fooBarBaz')` is `'FooBarBaz'` (was `'Foobarbaz'`)
 - `string/words`, `string/kebabCase`, `string/snakeCase`, `string/camelCase`, `string/pascalCase` — split humps in any cased script, not only A–Z: `kebabCase('grüßGott')` is `'grüß-gott'` (was `'grüßgott'`), `camelCase('приветМир')` is `'приветМир'` (was `'приветмир'`)
 - `string/titleCase` — works for any script and keeps apostrophes inside words: `"don't"` → `"Don't"` (was `"Don'T"`), `'élan'` → `'Élan'` (was `'éLan'`). Words in single quotes are still capitalized (`"'quick'"` → `"'Quick'"`)
-- `string/capitalize`, `string/titleCase` — leave Georgian unchanged; `capitalize` used to turn the first letter into Mtavruli, which Georgian only uses for all-caps text. `camelCase` and `pascalCase` still mark Georgian word boundaries with Mtavruli (`'გამარჯობა მსოფლიო'` → `'გამარჯობაᲛსოფლიო'`), as before
+- `string/capitalize`, `string/titleCase` — leave scripts unchanged whose capital letters are only used for all-caps text (Georgian); `capitalize` used to turn the first letter into that all-caps form. `camelCase` and `pascalCase` still use the capital form to mark word boundaries, as before
 - `string/randomId` — throws on a negative or non-integer `length`
 - `delay/delaySkippable` — rejects with the error when `condition` throws, instead of throwing from a timer every `pollInterval` ms
 - `isEmpty` from the root is the `validate` one (strings, arrays, objects); `duckkit/string` keeps the string-only version
@@ -48,6 +48,14 @@ documented bugs into fixes. Some outputs change — see **Changed**.
 - `async/debounce` — `cancel()` and `flush()`; returns `Debounced<Args>`
 - `async/throttle` — `cancel()` and the `trailing` option
 - Types `Debounced`, `Throttled`, `Curried`
+
+### Docs
+- README rewritten: what the library is for, a quick example, install and Node.js support, every function linked to its documentation, import styles, conventions (what throws, what returns `null`) and an upgrade section
+- New [documentation index](docs/README.md) and [upgrade guide](docs/upgrading-to-0.2.md) — every change since 0.1.x with what to do
+- Every docs page has a short intro, links back, and a clickable list of its functions
+- `docs/date.md` — `daysBetween` had lost its heading and was hidden inside `formatDuration`
+- `package.json` — clearer description, a focused keyword list (was about 140 keywords), `homepage` and `bugs` links for the npm page
+- `CONTRIBUTING.md` — the checks to run and what each one covers
 
 ### Tooling
 - `npm run check:package` — packs the package, installs the tarball and loads every entry point with `import` and `require`; checks the root export and the README function list; runs `publint` and `are-the-types-wrong`. Runs in CI, before publish, and in `prepublishOnly`

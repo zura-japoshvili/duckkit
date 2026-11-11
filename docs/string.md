@@ -1,8 +1,14 @@
 # String
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
+Case conversion, slugs, truncation, HTML escaping and templates. The functions are Unicode-aware: letters from any script count as letters, and emoji are never cut in half.
+
 ```typescript
 import { capitalize, slugify, camelCase, mask, escapeHtml, template, ... } from 'duckkit/string'
 ```
+
+**On this page:** [Case conversion](#case-conversion) · [capitalize](#capitalize) · [camelCase](#camelcase) · [snakeCase](#snakecase) · [kebabCase](#kebabcase) · [pascalCase](#pascalcase) · [titleCase](#titlecase) · [words](#words) · [slugify](#slugify) · [truncate](#truncate) · [excerpt](#excerpt) · [isEmpty](#isempty) · [randomId](#randomid) · [countOccurrences](#countoccurrences) · [mask](#mask) · [escapeHtml](#escapehtml) · [unescapeHtml](#unescapehtml) · [stripHtml](#striphtml) · [template](#template)
 
 ---
 
@@ -24,7 +30,7 @@ capitalize('😀hello')      // "😀hello" — emoji kept whole
 capitalize('élan')         // "Élan"
 ```
 
-> **Georgian is left unchanged:** Georgian capitals (Mtavruli) are only used for all-caps text, never to start a word, so `capitalize('გამარჯობა')` stays `"გამარჯობა"`.
+> **Scripts whose capitals are only used for all-caps text are left unchanged:** in Georgian, for example, capital letters (Mtavruli) never start a word, so `capitalize` doesn't add one.
 
 ---
 
@@ -45,7 +51,6 @@ camelCase('fooBar')       // "fooBar" — already camelCase, unchanged
 camelCase('FooBarBaz')    // "fooBarBaz"
 camelCase('myAPIKey')     // "myApiKey" — acronyms become one word
 camelCase('приветМир')    // "приветМир" — humps in any cased script
-camelCase('გამარჯობა მსოფლიო') // "გამარჯობაᲛსოფლიო" — Georgian boundaries use Mtavruli
 ```
 
 ---
@@ -125,7 +130,7 @@ titleCase("the 'quick' fox") // "The 'Quick' Fox" — words in single quotes too
 > titleCase('well-known issue')  // "Well-Known Issue" — may or may not be desired
 > ```
 
-> **Georgian is left unchanged:** Georgian capitals (Mtavruli) are only used for all-caps text, never to start a word, so `titleCase('გამარჯობა')` stays `"გამარჯობა"`.
+> **Scripts whose capitals are only used for all-caps text are left unchanged:** in Georgian, for example, capital letters (Mtavruli) never start a word, so `titleCase` doesn't add them.
 
 ---
 
@@ -171,7 +176,7 @@ slugify('')                   // ""
 
 ```typescript
 slugify('Crème Brûlée')       // "creme-brulee"
-slugify('გამარჯობა მსოფლიო')  // "გამარჯობა-მსოფლიო"
+slugify('日本語 タイトル')          // "日本語-タイトル"
 slugify('Привет мир')         // "привет-мир"
 slugify('한국어 블로그')        // "한국어-블로그"
 slugify('I ❤️ TS & JS')       // "i-ts-js"

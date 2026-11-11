@@ -1,8 +1,14 @@
 # Number
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
+Math and formatting helpers. `roundTo` and `truncateTo` work on the decimal you wrote, so `roundTo(1.005, 2)` is `1.01`.
+
 ```typescript
 import { clamp, lerp, roundTo, truncateTo, randomInt, inRange, average, normalize, toOrdinal, toRoman, formatNumber, formatBytes } from 'duckkit/number'
 ```
+
+**On this page:** [clamp](#clamp) · [lerp](#lerp) · [roundTo](#roundto) · [truncateTo](#truncateto) · [randomInt](#randomint) · [inRange](#inrange) · [average](#average) · [normalize](#normalize) · [toOrdinal](#toordinal) · [toRoman](#toroman) · [formatNumber](#formatnumber) · [formatBytes](#formatbytes)
 
 ---
 

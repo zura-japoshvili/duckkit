@@ -1,8 +1,14 @@
 # Array
 
+[← duckkit README](../README.md) · [All docs](./README.md)
+
+Typed helpers for grouping, sorting, combining and sampling arrays. None of them mutate the input array.
+
 ```typescript
 import { groupBy, partition, sortBy, chunk, ... } from 'duckkit/array'
 ```
+
+**On this page:** [groupBy](#groupby) · [flatGroupBy](#flatgroupby) · [sortBy](#sortby) · [topBy](#topby) · [minBy / maxBy](#minby--maxby) · [partition](#partition) · [chunk](#chunk) · [unique](#unique) · [zip](#zip) · [flatten](#flatten) · [range](#range) · [compact](#compact) · [sample](#sample) · [shuffle](#shuffle) · [without](#without) · [union](#union) · [intersection](#intersection) · [difference](#difference) · [countBy](#countby) · [keyBy](#keyby) · [sum / sumBy](#sum--sumby)
 
 ---
 
