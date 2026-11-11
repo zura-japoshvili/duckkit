@@ -29,7 +29,7 @@ documented bugs into fixes. Some outputs change — see **Changed**.
 - `string/randomId` — throws on a negative or non-integer `length`
 - `delay/delaySkippable` — rejects with the error when `condition` throws, instead of throwing from a timer every `pollInterval` ms
 - `isEmpty` from the root is the `validate` one (strings, arrays, objects); `duckkit/string` keeps the string-only version
-- `package.json` declares `"engines": { "node": ">=20" }`, the oldest version CI tests. npm warns on older Node; Yarn 1 refuses to install. Browsers are not affected
+- `package.json` declares `"engines": { "node": ">=20" }`, the oldest version CI tests. npm warns on older Node. Browsers are not affected
 
 ### Fixed
 - `array/groupBy`, `array/flatGroupBy` — crashed with "push is not a function" on keys like `"constructor"` or `"toString"`

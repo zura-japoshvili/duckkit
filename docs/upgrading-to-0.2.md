@@ -105,4 +105,4 @@ All of these were wrong in 0.1.x. If you compare exact outputs in tests or store
 
 ## Node.js 20+
 
-`package.json` declares `"engines": { "node": ">=20" }` — the oldest version CI tests. npm warns on older Node and Yarn 1 refuses to install. Browsers are not affected.
+`package.json` declares `"engines": { "node": ">=20" }` — the oldest version CI tests. npm warns on older Node. Browsers are not affected.

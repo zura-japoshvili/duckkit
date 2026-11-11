@@ -31,7 +31,6 @@ safe(() => JSON.parse(raw))           // { ok: true, value } or { ok: false, err
 
 ```bash
 npm install duckkit
-# or: pnpm add duckkit · yarn add duckkit · bun add duckkit
 ```
 
 Works in every current browser and in Node.js 20+. Type declarations are included — there is no separate `@types` package.
